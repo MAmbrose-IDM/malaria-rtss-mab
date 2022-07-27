@@ -4,6 +4,7 @@ import math as math
 
 from dtk.interventions.irs import add_IRS
 from dtk.interventions.itn_age_season import add_ITN_age_season
+from dtk.utils.Campaign.CampaignClass import CampaignEvent, NodeSetAll, StandardInterventionDistributionEventCoordinator, BroadcastEvent
 from dtk.interventions.property_change import change_individual_property
 from malaria.interventions.adherent_drug import configure_adherent_drug
 from malaria.interventions.health_seeking import add_health_seeking
@@ -24,27 +25,28 @@ def calc_high_low_access_coverages(coverage_all, high_access_frac):
 
 
 
-def get_concentration_at_time(self, tt, initial_concentration, fast_frac, k1, k2):
+def get_concentration_at_time(tt, initial_concentration, fast_frac, k1, k2):
     concentration_at_tt = initial_concentration * (fast_frac * math.exp(-1 * tt / k1) + (1 - fast_frac) * math.exp(-1 * tt / k2))
     return concentration_at_tt
 
 
-def get_time_efficacy_values(self, initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time, booster_interval=365):
-    # get concentration and efficacy through time for a single dose
+def get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time):
+    # get concentration and efficacy through time
     concentration_through_time = [get_concentration_at_time(tt, initial_concentration, fast_frac, k1, k2) for tt in range(total_time)]
-    efficacy_through_time = max_efficacy * (1 - math.exp(mm * concentration_through_time))
+    efficacy_through_time = [max_efficacy * (1 - math.exp(mm * cc)) for cc in concentration_through_time]
+    return [[i for i in range(total_time)], efficacy_through_time]
 
-    # get concentration and efficacy through time after a second dose. calculate the added efficacy through time compared to a single dose
-    if booster_interval < total_time:
-        after_booster_initial_concentration = concentration_through_time[booster_interval] + initial_concentration
-    else:
-        after_booster_initial_concentration = 0
-    concentration_through_time_after_booster = [get_concentration_at_time(tt, after_booster_initial_concentration, fast_frac, k1, k2) for tt in range(total_time)]
-    efficacy_through_time_after_booster = max_efficacy * (1 - math.exp(mm * concentration_through_time_after_booster))
-    # calcuate how much _extra_ protection the booster provides over original efficacy (this will be added to existing efficacy from prior vaccine)
-    protection_from_prior_dose = efficacy_through_time[booster_interval:] + [0] * (total_time - len(efficacy_through_time[booster_interval:]))
-    added_booster_efficacy = efficacy_through_time_after_booster - protection_from_prior_dose
-    return [[i for i in range(total_time)], efficacy_through_time, added_booster_efficacy]
+
+def get_vacc_params_from_pkpd_df(row):
+    initial_concentration = row['initial_concentration']
+    max_efficacy = row['max_efficacy']
+    fast_frac = row['fast_frac']
+    k1 = row['k1']
+    k2 = row['k2']
+    mm = row['mm']
+    total_time = row['total_time']
+    time_efficacy_values = get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time)
+    return time_efficacy_values
 
 
 class InterventionSuite:
@@ -99,10 +101,11 @@ class InterventionSuite:
     irs_init_eff_col = 'initial_killing'
 
     # vacc
-    vacc_ds_col = 'DS_name'
+    vacc_ds_col = 'DS_Name'
+    filter_by_ds = False
 
     # rtss
-    rtss_ds_col = 'DS_name'
+    rtss_ds_col = 'DS_Name'
     rtss_type_col = 'rtss_types'
     rtss_start_col = 'RTSS_day'
     rtss_coverage_col = 'coverage_levels'
@@ -131,9 +134,110 @@ class InterventionSuite:
     ipti_repetitions = 'repetitions'
     ipti_tsteps_btwn_repetitions = 'tsteps_btwn_repetitions'
 
+    def add_triggered_vacc(self, cb, vacc_char_df, my_ds=''):
 
-    def add_pkpd_vacc(self, cb, vacc_df, my_ds, high_access_ip_frac=0, vacc_target_group='random', cohort_month_shift=0):
-        vacc_df = vacc_df[vacc_df[self.vacc_ds_col].str.upper() == my_ds.upper()]
+        if self.filter_by_ds:
+            vacc_char_df = vacc_char_df[vacc_char_df[self.vacc_ds_col].str.upper() == my_ds.upper()]
+        if 'vacc_type' in vacc_char_df.columns:
+            row_initial = vacc_char_df[vacc_char_df['vacc_type'] == 'initial'].iloc[0]
+            row_boost = vacc_char_df[vacc_char_df['vacc_type'] == 'booster'].iloc[0]
+        else:
+            row_initial = vacc_char_df.iloc[0]
+            row_boost = vacc_char_df.iloc[0]
+
+        """Set vaccine properties (e.g., initial efficacy, waning)"""
+        # TODO: currently, assumes that boost has same waning type as initial dose. Should probably change this.
+        try:
+            waning_type = row_initial['vacc_waning_type']
+        except:
+            waning_type = 'exponential'
+
+        if waning_type == 'pkpd':
+            time_efficacy_values_initial = get_vacc_params_from_pkpd_df(row_initial)
+            time_efficacy_values_boost = get_vacc_params_from_pkpd_df(row_boost)
+            time_efficacy_initial = time_efficacy_values_initial[1][0]
+            time_efficacy_multipliers = [time_efficacy_values_initial[1][yy] / time_efficacy_initial for yy in
+                                         range(len(time_efficacy_values_initial[1]))]
+            time_efficacy_boost_initial = time_efficacy_values_boost[1][0]
+            time_efficacy_boost_multipliers = [time_efficacy_values_boost[1][yy] / time_efficacy_boost_initial for yy in
+                                         range(len(time_efficacy_values_boost[1]))]
+
+            vaccine_params_initial = {"Waning_Config": {"Initial_Effect": time_efficacy_initial,
+                                                        "Durability_Map": {
+                                                            "Times": time_efficacy_values_initial[0],
+                                                            "Values": time_efficacy_multipliers
+                                                        },
+                                                        "Reference_Timer": 1,
+                                                        "Expire_At_Durability_Map_End": 1,
+                                                        "class": "WaningEffectMapLinear"},
+                                                         "Disqualifying_Properties": ["vaccine_selected:Yes"]}
+            vaccine_params_boost = {"Waning_Config": {"Initial_Effect": time_efficacy_boost_initial,
+                                                      "Durability_Map": {
+                                                          "Times": time_efficacy_values_boost[0],
+                                                          "Values": time_efficacy_boost_multipliers
+                                                      },
+                                                      "Reference_Timer": 1,
+                                                      "Expire_At_Durability_Map_End": 1,
+                                                      "class": "WaningEffectMapLinear"},
+                                                      "Disqualifying_Properties": ["vaccine_selected:Yes"]}
+
+            # vaccine_params_initial = {"Waning_Config": {"Initial_Effect": 1,
+            #                                             "Box_Duration": 400,
+            #                                             "class": "WaningEffectBox"},
+            #                           "Disqualifying_Properties": ["vaccine_selected:Yes"]}
+            # vaccine_params_boost = {"Waning_Config": {"Initial_Effect": 0.5,
+            #                                             "Box_Duration": 400,
+            #                                             "class": "WaningEffectBox"},
+            #                         "Disqualifying_Properties": ["vaccine_selected:Yes"]}
+        else:
+            raise ValueError("Unknown vaccine decay type. Only 'pkpd' currently supported.")
+            # if waning_type != 'exponential':
+            #     raise ValueError("Unknown vaccine decay type, assuming exponential decay")
+            # vaccine_params_no_boost = {"Waning_Config": {"Initial_Effect": row['vacc_init_eff'],
+            #                                              "Decay_Time_Constant": row['vacc_decay_t'],
+            #                                              "class": "WaningEffectExponential"}}
+            # vaccine_params_boost = vaccine_params_no_boost
+
+        # TODO: add IPs for whether this should be treated as a booster
+        # vaccine is added in response to broadcast event
+        # initial vaccine
+        add_vaccine(cb,
+                    vaccine_type='RTSS',
+                    vaccine_params=vaccine_params_initial,
+                    start_days=[0],
+                    coverage=1,
+                    repetitions=1,
+                    tsteps_btwn_repetitions=-1,
+                    listening_duration=-1,
+                    ind_property_restrictions=[{'VaccineStatus': 'None'}],
+                    trigger_condition_list=['event_add_new_vaccine'])
+        # booster vaccines
+        add_vaccine(cb,
+                    vaccine_type='RTSS',
+                    vaccine_params=vaccine_params_boost,
+                    start_days=[0],
+                    coverage=1,
+                    repetitions=1,
+                    tsteps_btwn_repetitions=-1,
+                    listening_duration=-1,
+                    ind_property_restrictions=[{'VaccineStatus': 'GotVaccine'}],
+                    trigger_condition_list=['event_add_new_vaccine'])
+
+    def change_vacc_ips(self, cb):
+        change_individual_property(cb,
+                                   target_property_name='VaccineStatus',
+                                   target_property_value='GotVaccine',
+                                   ind_property_restrictions=[{'VaccineStatus': 'None'}],
+                                   trigger_condition_list=['Received_Vaccine'],
+                                   blackout_flag=False)
+
+    def add_pkpd_vacc(self, cb, vacc_df, my_ds='', high_access_ip_frac=0, vacc_target_group='random', cohort_month_shift=0):
+
+        # Sequence of vaccine events:
+        #  - on start_day, select people to receive vaccine (change their IP vaccine_selected to True). This will remove old vaccines
+        #  - on start_day+1, create a campaign which changes IP vaccine_selected to False (allowing new vaccines to be given) and broadcasts an event that triggers a node-level intervention where the new vaccine is distributed to these same individuals. The vaccine should have Disqualifying_Properties set to {“vaccine_selected”: “True”}. Also change VaccineStatus IP to ReceivedVaccine.
+        if self.filter_by_ds:
+            vacc_df = vacc_df[vacc_df[self.vacc_ds_col].str.upper() == my_ds.upper()]
 
         """Use campaign-style deployment targeted to specific ages (since births disabled in simulation)"""
         for r, row in vacc_df.iterrows():
@@ -143,61 +247,8 @@ class InterventionSuite:
             if start_day > 0:
                 start_day = start_day + 365
 
-            # TODO: add IP-dependent efficacy parameters in case of booster
-            change_booster_IPs = False  # updated in booster statements if applicable
-            if 'adaptive_booster_addition' in vacc_df.columns:
-                change_booster_IPs = row['adaptive_booster_addition']  # change booster IPs when specifying coverage per booster dose
-
-            """Set vaccine properties (e.g., initial efficacy, waning)"""
-            try:
-                waning_type = row['vacc_waning_type']
-            except:
-                waning_type = 'exponential'
-
-            if waning_type == 'pkpd':
-                initial_concentration = row['initial_concentration']
-                max_efficacy = row['max_efficacy']
-                fast_frac = row['fast_frac']
-                k1 = row['k1']
-                k2 = row['k2']
-                mm = row['m']
-                total_time = row['total_time']
-                booster_adjust = row['booster_adjust']
-                if booster_adjust:
-                    booster_interval = row['booster_interval']
-                else:
-                    booster_interval = 365 * 100
-                time_efficacy_values = get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time, booster_interval)
-                time_efficacy_initial = time_efficacy_values[1][0]
-                time_efficacy_multipliers = [time_efficacy_values[1][yy] / time_efficacy_initial for yy in range(len(time_efficacy_values[1]))]
-                time_efficacy_boost_initial = time_efficacy_values[2][0]
-                time_efficacy_boost_multipliers = [time_efficacy_values[2][yy] / time_efficacy_boost_initial for yy in range(len(time_efficacy_values[2]))]
-                vaccine_params_no_boost = {"Waning_Config": {"Initial_Effect": time_efficacy_initial,
-                                                             "Durability_Map":{
-                                                                 "Times": time_efficacy_values[1],
-                                                                 "Values": time_efficacy_multipliers
-                                                             },
-                                                             "Reference_Timer": 1,
-                                                             "Expire_At_Durability_Map_End": 1,
-                                                             "class": "WaningEffectMapLinear"}}
-                vaccine_params_boost = {"Waning_Config": {"Initial_Effect": time_efficacy_boost_initial,
-                                                        "Durability_Map":{
-                                                            "Times": time_efficacy_values[1],
-                                                            "Values": time_efficacy_boost_multipliers
-                                                        },
-                                                        "Reference_Timer": 1,
-                                                        "Expire_At_Durability_Map_End": 1,
-                                                        "class": "WaningEffectMapLinear"}}
-            else:
-                if waning_type != 'exponential':
-                    raise ValueError("Unknown vaccine decay type, assuming exponential decay")
-                vaccine_params_no_boost = {"Waning_Config": {"Initial_Effect": row['vacc_init_eff'],
-                                                    "Decay_Time_Constant": row['vacc_decay_t'],
-                                                    "class": "WaningEffectExponential"}}
-                vaccine_params_boost = vaccine_params_no_boost
-
-
-            """Set group of individuals to receive vaccine and add campaign"""
+            # Select people to receive vaccine (change their IP vaccine_selected to True)
+            """Set group of individuals to receive vaccine and change IPs accordingly"""
             if high_access_ip_frac > 0 and vacc_target_group in ['low', 'high']:  # different coverages in different access groups
                 if vacc_target_group == 'low':
                     # vaccine is preferentially given to the 'low-access' group
@@ -207,55 +258,56 @@ class InterventionSuite:
                 elif vacc_target_group == 'high':
                     high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.rtss_coverage_col],
                                                                         high_access_frac=high_access_ip_frac)
-
                 # high-access coverage
-                # TODO: add IPs for whether this should be treated as a booster
-                add_vaccine(cb,
-                            vaccine_type='RTSS',
-                            vaccine_params=vaccine_params_no_boost,
-                            start_days=[start_day],
-                            coverage=high_low_coverages[0],
-                            repetitions=row[self.rtss_repetitions],
-                            tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                            target_group={'agemin': row[self.rtss_min_age_col],
-                                          'agemax': row[self.rtss_max_age_col]},
-                            ind_property_restrictions=[{'AccessToInterventions': 'higher'},
-                                                       {'vaccine_selected': 'True'}],
-                            disqualifying_properties=[{"remove_vaccine": "True"}])
-
+                change_individual_property(cb,
+                                           start_day=start_day,
+                                           coverage=high_low_coverages[0],
+                                           target_property_name='vaccine_selected',
+                                           target_property_value='Yes',
+                                           target_group={'agemin': row[self.rtss_min_age_col],
+                                                         'agemax': row[self.rtss_max_age_col]},
+                                           ind_property_restrictions=[{'AccessToInterventions': 'higher'}],
+                                           blackout_flag=False)
                 # low-access coverage
-                add_vaccine(cb,
-                            vaccine_type='RTSS',
-                            vaccine_params=vaccine_params_no_boost,
-                            start_days=[start_day],
-                            coverage=high_low_coverages[1],
-                            repetitions=row[self.rtss_repetitions],
-                            tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                            target_group={'agemin': row[self.rtss_min_age_col],
-                                          'agemax': row[self.rtss_max_age_col]},
-                            ind_property_restrictions=[{'AccessToInterventions': 'lower'},
-                                                       {'vaccine_selected': 'True'}],
-                            disqualifying_properties=[{"remove_vaccine": "True"}])
-
+                change_individual_property(cb,
+                                           start_day=start_day,
+                                           coverage=high_low_coverages[1],
+                                           target_property_name='vaccine_selected',
+                                           target_property_value='Yes',
+                                           target_group={'agemin': row[self.rtss_min_age_col],
+                                                         'agemax': row[self.rtss_max_age_col]},
+                                           ind_property_restrictions=[{'AccessToInterventions': 'lower'}],
+                                           blackout_flag=False)
             else:  # uniform probability of getting the vaccine
                 if vacc_target_group != 'random':
                     print('WARNING: name for RTS,S access-group targeting not recognized, assuming random access.')
-                add_vaccine(cb,
-                            vaccine_type='RTSS',
-                            vaccine_params=vaccine_params_no_boost,
-                            start_days=[start_day],
-                            coverage=row[self.rtss_coverage_col],
-                            repetitions=row[self.rtss_repetitions],
-                            tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                            target_group={'agemin': row[self.rtss_min_age_col],
-                                          'agemax': row[self.rtss_max_age_col]},
-                            ind_property_restrictions=[{'vaccine_selected': 'True'}],
-                            disqualifying_properties=[{"remove_vaccine": "True"}])
+                change_individual_property(cb,
+                                           start_day=start_day,
+                                           coverage=row[self.rtss_coverage_col],
+                                           target_property_name='vaccine_selected',
+                                           target_property_value='Yes',
+                                           target_group={'agemin': row[self.rtss_min_age_col],
+                                                         'agemax': row[self.rtss_max_age_col]},
+                                           blackout_flag=False)
 
-            # self.change_rtss_ips(cb, change_booster_IPs=change_booster_IPs)
-            cb.update_params({
-                "Report_Event_Recorder_Events": ['Births', 'PropertyChange', 'Received_Vaccine', 'Received_Treatment']
-            })
+            # On start_day+1, create a campaign which changes IP vaccine_selected to No (allowing new vaccines to be given) and broadcasts an event that triggers a node-level intervention where the new vaccine is distributed to these same individuals. The vaccine should have Disqualifying_Properties set to {“vaccine_selected”: “Yes”}. Also change VaccineStatus IP to ReceivedVaccine.
+            vacc_broadcast_event = CampaignEvent(Start_Day=start_day+1,
+                                                 Nodeset_Config=NodeSetAll(),
+                                                 Event_Coordinator_Config=StandardInterventionDistributionEventCoordinator(
+                                                     Demographic_Coverage=1,
+                                                     Property_Restrictions=['vaccine_selected:Yes'],
+                                                     Number_Repetitions=1,
+                                                     Timesteps_Between_Repetitions=-1,
+                                                     Intervention_Config=BroadcastEvent(
+                                                         Broadcast_Event='event_add_new_vaccine',
+                                                         New_Property_Value='vaccine_selected:No'),
+                                                         ))
+            cb.add_event(vacc_broadcast_event)
+
+        self.change_vacc_ips(cb)
+        cb.update_params({
+            "Report_Event_Recorder_Events": ['Births', 'PropertyChange', 'Received_Vaccine', 'Received_Treatment']
+        })
 
         return len(vacc_df)
 
@@ -263,7 +315,10 @@ class InterventionSuite:
     def add_ds_hs(self, cb, hs_df, my_ds, high_access_ip_frac=0, cm_target_group='random'):
         ds_col = self.hs_ds_col
         duration = self.hs_duration
-        df = hs_df[hs_df[ds_col] == my_ds]
+        if self.filter_by_ds:
+            df = hs_df[hs_df[ds_col] == my_ds]
+        else:
+            df = hs_df
         for r, row in df.iterrows():
             self.add_hs_from_file(cb, row, duration=duration, high_access_ip_frac=high_access_ip_frac, cm_target_group=cm_target_group)
 
@@ -350,7 +405,10 @@ class InterventionSuite:
         ds_col = self.smc_ds_col
         adherence_multiplier = self.smc_adherence_multiplier
         sp_resist_day1_multiply = self.smc_sp_resist_day1_multiply
-        df = smc_df[smc_df[ds_col] == my_ds]
+        if self.filter_by_ds:
+            df = smc_df[smc_df[ds_col] == my_ds]
+        else:
+            df = smc_df
         drug_code = self.smc_drug_code
         if self.smc_adherence:
             if 'adherence' in smc_df.columns.values:
@@ -535,7 +593,8 @@ class InterventionSuite:
                                        blackout_flag=False)
 
     def add_ds_rtss(self, cb, rtss_df, my_ds, high_access_ip_frac=0, rtss_target_group='random',rtss_booster1_min_age=730, cohort_month_shift=0):
-        rtss_df = rtss_df[rtss_df[self.rtss_ds_col].str.upper() == my_ds.upper()]
+        if self.filter_by_ds:
+            rtss_df = rtss_df[rtss_df[self.rtss_ds_col].str.upper() == my_ds.upper()]
         change_booster_IPs = False # updated in booster statements if applicable
         
         rtss_booster2_min_age = rtss_booster1_min_age + 365
@@ -718,7 +777,8 @@ class InterventionSuite:
 
 
     def add_ds_ipti(self, cb, ipti_df, my_ds, high_access_ip_frac=0):
-        ipti_df = ipti_df[ipti_df[self.ipti_ds_col].str.upper() == my_ds.upper()]
+        if self.filter_by_ds:
+            ipti_df = ipti_df[ipti_df[self.ipti_ds_col].str.upper() == my_ds.upper()]
         EPI = ipti_df['deploy_type'].unique()[0] == 'EPI'
         try:
             drug_code = ipti_df['drug_code'].unique()[0]
@@ -792,11 +852,13 @@ class InterventionSuite:
         return len(ipti_df)
 
 
-def add_all_interventions(cb, int_suite, my_ds, high_access_ip_frac=0,
-                          rtss_target_group='random', smc_target_group='random', cm_target_group='random',
+def add_all_interventions(cb, int_suite, my_ds='', high_access_ip_frac=0,
+                          vacc_target_group='random', rtss_target_group='random', smc_target_group='random', cm_target_group='random',
                           rtss_booster1_min_age=730,
                           hs_df=pd.DataFrame(),
                           smc_df=pd.DataFrame(),
+                          vacc_char_df=pd.DataFrame(),
+                          vacc_df=pd.DataFrame(),
                           rtss_df=pd.DataFrame(),
                           ipti_df=pd.DataFrame(),
                           addtl_smc_func=None,
@@ -821,6 +883,13 @@ def add_all_interventions(cb, int_suite, my_ds, high_access_ip_frac=0,
         has_rtss = int_suite.add_ds_rtss(cb, rtss_df, my_ds, high_access_ip_frac, rtss_target_group,rtss_booster1_min_age, cohort_month_shift)
         if has_rtss > 0:
             event_list.append('Received_Vaccine')
+
+    if not vacc_df.empty:
+        int_suite.add_triggered_vacc(cb, vacc_char_df, my_ds)
+        has_vacc = int_suite.add_pkpd_vacc(cb, vacc_df, my_ds, high_access_ip_frac, vacc_target_group, cohort_month_shift)
+        if has_vacc > 0:
+            event_list.append('Received_Vaccine')
+            event_list.append('event_add_new_vaccine')
 
     if not ipti_df.empty:
         has_ipti = int_suite.add_ds_ipti(cb, ipti_df, my_ds, high_access_ip_frac)
