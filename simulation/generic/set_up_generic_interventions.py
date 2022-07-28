@@ -197,7 +197,6 @@ class InterventionSuite:
             #                                              "class": "WaningEffectExponential"}}
             # vaccine_params_boost = vaccine_params_no_boost
 
-        # TODO: add IPs for whether this should be treated as a booster
         # vaccine is added in response to broadcast event
         # initial vaccine
         add_vaccine(cb,
@@ -240,11 +239,18 @@ class InterventionSuite:
 
         """Use campaign-style deployment targeted to specific ages (since births disabled in simulation)"""
         for r, row in vacc_df.iterrows():
-            # calculate campaign day, given cohort month shift
-            start_day0 = row['simday']
-            start_day = start_day0 - round(30.4 * cohort_month_shift)
-            if start_day > 0:
-                start_day = start_day + 365
+            # calculate vaccine delivery day, given cohort month shift. If EPI type, don't adjust for cohort month
+            #    (because vaccine is given according to individual's age instead of in a mass campaign)
+            start_day0 = row['vacc_day']
+            if row['deploy_type'] == 'EPI_cohort':
+                start_day = start_day0
+            elif 'season' in row['deploy_type']:
+                start_day = start_day0 - round(30.4 * cohort_month_shift)
+                if start_day > 0:
+                    start_day = start_day + 365
+            else:
+                print('WARNING: vaccine delivery name not recognized, age-based vaccination.')
+                start_day = start_day0
 
             # Select people to receive vaccine (change their IP vaccine_selected to True)
             """Set group of individuals to receive vaccine and change IPs accordingly"""

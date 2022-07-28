@@ -31,11 +31,11 @@ NO-INTERVENTIONS
 ___.csv
 """
 scen_csv = 'validation_Phase3_noBooster_cleaned.csv'
-expname = scen_csv.replace('.csv', '_TEST')
+expname = scen_csv.replace('.csv', '_3seed')
 ds_name = 'run_col'
 
-num_seeds = 1
-years = 3 #! 10  # for general runs: 10, for SweepEIR: 20, for KintampoPhase3 and ChandramohanTrial: 6
+num_seeds = 3
+years = 6 #! 10  # for general runs: 10, for SweepEIR: 20, for Phase3 and ChandramohanTrial: 6
 use_12_cohorts_flag = False #! True  # False  # simulate one cohort born in each month (seasonality and SMC dates updated accordingly)
 
 if __name__ == "__main__":
