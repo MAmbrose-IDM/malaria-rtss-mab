@@ -30,10 +30,11 @@ def get_concentration_at_time(tt, initial_concentration, fast_frac, k1, k2):
     return concentration_at_tt
 
 
-def get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time):
+def get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, hh, nn, total_time):
     # get concentration and efficacy through time
     concentration_through_time = [get_concentration_at_time(tt, initial_concentration, fast_frac, k1, k2) for tt in range(total_time)]
-    efficacy_through_time = [max_efficacy * (1 - math.exp(mm * cc)) for cc in concentration_through_time]
+    # efficacy_through_time = [max_efficacy * (1 - math.exp(mm * cc)) for cc in concentration_through_time]
+    efficacy_through_time = [max_efficacy / (1 + math.pow((hh / cc), nn)) for cc in concentration_through_time]
     return [[i for i in range(total_time)], efficacy_through_time]
 
 
@@ -43,9 +44,10 @@ def get_vacc_params_from_pkpd_df(row):
     fast_frac = row['fast_frac']
     k1 = row['k1']
     k2 = row['k2']
-    mm = row['mm']
+    hh = row['hh']
+    nn = row['nn']
     total_time = row['total_time']
-    time_efficacy_values = get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, mm, total_time)
+    time_efficacy_values = get_time_efficacy_values(initial_concentration, max_efficacy, fast_frac, k1, k2, hh, nn, total_time)
     return time_efficacy_values
 
 
@@ -103,24 +105,21 @@ class InterventionSuite:
     # vacc
     vacc_ds_col = 'DS_Name'
     filter_by_ds = False
-
-    # rtss
-    rtss_ds_col = 'DS_Name'
-    rtss_type_col = 'rtss_types'
-    rtss_start_col = 'RTSS_day'
-    rtss_coverage_col = 'coverage_levels'
-    rtss_touchpoint_col = 'rtss_touchpoints'  # days since births!
-    rtss_deploy_type_col = 'deploy_type'
-    rtss_distribution_col = 'distribution_name'
-    rtss_std_col = 'distribution_std'
-    rtss_min_age_col = 'agemin'
-    rtss_max_age_col = 'agemax'
-    rtss_repetitions = 'repetitions'
-    rtss_tsteps_btwn_repetitions = 'tsteps_btwn_repetitions'
-    rtss_init_eff_col = 'initial_killing'
-    rtss_decay_t_col = 'decay_time_constant'
-    rtss_decay_class_col = 'decay_class'
-    rtss_property_restrictions = 'rtss_property_restrictions'
+    vacc_type_col = 'vacc_types'
+    vacc_start_col = 'vacc_day'
+    vacc_coverage_col = 'coverage_levels'
+    vacc_touchpoint_col = 'vacc_touchpoints'  # days since births!
+    vacc_deploy_type_col = 'deploy_type'
+    vacc_distribution_col = 'distribution_name'
+    vacc_std_col = 'distribution_std'
+    vacc_min_age_col = 'agemin'
+    vacc_max_age_col = 'agemax'
+    vacc_repetitions = 'repetitions'
+    vacc_tsteps_btwn_repetitions = 'tsteps_btwn_repetitions'
+    vacc_init_eff_col = 'initial_killing'
+    vacc_decay_t_col = 'decay_time_constant'
+    vacc_decay_class_col = 'decay_class'
+    vacc_property_restrictions = 'vacc_property_restrictions'
 
     # ipti
     ipti_ds_col = 'DS_Name'
@@ -252,11 +251,11 @@ class InterventionSuite:
             if high_access_ip_frac > 0 and vacc_target_group in ['low', 'high']:  # different coverages in different access groups
                 if vacc_target_group == 'low':
                     # vaccine is preferentially given to the 'low-access' group
-                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.rtss_coverage_col],
+                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
                                                                         high_access_frac=1 - high_access_ip_frac)
                     high_low_coverages = [high_low_coverages[1], high_low_coverages[0]]
                 elif vacc_target_group == 'high':
-                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.rtss_coverage_col],
+                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
                                                                         high_access_frac=high_access_ip_frac)
                 # high-access coverage
                 change_individual_property(cb,
@@ -264,8 +263,8 @@ class InterventionSuite:
                                            coverage=high_low_coverages[0],
                                            target_property_name='vaccine_selected',
                                            target_property_value='Yes',
-                                           target_group={'agemin': row[self.rtss_min_age_col],
-                                                         'agemax': row[self.rtss_max_age_col]},
+                                           target_group={'agemin': row[self.vacc_min_age_col],
+                                                         'agemax': row[self.vacc_max_age_col]},
                                            ind_property_restrictions=[{'AccessToInterventions': 'higher'}],
                                            blackout_flag=False)
                 # low-access coverage
@@ -274,8 +273,8 @@ class InterventionSuite:
                                            coverage=high_low_coverages[1],
                                            target_property_name='vaccine_selected',
                                            target_property_value='Yes',
-                                           target_group={'agemin': row[self.rtss_min_age_col],
-                                                         'agemax': row[self.rtss_max_age_col]},
+                                           target_group={'agemin': row[self.vacc_min_age_col],
+                                                         'agemax': row[self.vacc_max_age_col]},
                                            ind_property_restrictions=[{'AccessToInterventions': 'lower'}],
                                            blackout_flag=False)
             else:  # uniform probability of getting the vaccine
@@ -283,11 +282,11 @@ class InterventionSuite:
                     print('WARNING: name for RTS,S access-group targeting not recognized, assuming random access.')
                 change_individual_property(cb,
                                            start_day=start_day,
-                                           coverage=row[self.rtss_coverage_col],
+                                           coverage=row[self.vacc_coverage_col],
                                            target_property_name='vaccine_selected',
                                            target_property_value='Yes',
-                                           target_group={'agemin': row[self.rtss_min_age_col],
-                                                         'agemax': row[self.rtss_max_age_col]},
+                                           target_group={'agemin': row[self.vacc_min_age_col],
+                                                         'agemax': row[self.vacc_max_age_col]},
                                            blackout_flag=False)
 
             # On start_day+1, create a campaign which changes IP vaccine_selected to No (allowing new vaccines to be given) and broadcasts an event that triggers a node-level intervention where the new vaccine is distributed to these same individuals. The vaccine should have Disqualifying_Properties set to {“vaccine_selected”: “Yes”}. Also change VaccineStatus IP to ReceivedVaccine.
@@ -569,212 +568,6 @@ class InterventionSuite:
                                                       )
         return smc_adherent_config
 
-    def change_rtss_ips(self, cb, change_booster_IPs=False):
-        change_individual_property(cb,
-                                   target_property_name='VaccineStatus',
-                                   target_property_value='GotVaccine',
-                                   ind_property_restrictions=[{'VaccineStatus': 'None'}],
-                                   trigger_condition_list=['Received_Vaccine'],
-                                   blackout_flag=False)
-        # UPDATE 2021-09-15: Currently, the generic model is set up to give Booster1 in the first year and Booster2 in the second year (this differs from the Nigeria setup).
-        #     Booster2 is given to anyone who received the first vaccine, regardless of whether they also received Booster1.
-        if change_booster_IPs:
-            change_individual_property(cb,
-                                       target_property_name='VaccineStatus',
-                                       target_property_value='GotBooster1',
-                                       ind_property_restrictions=[{'VaccineStatus': 'GotVaccine'}],
-                                       trigger_condition_list=['Received_Vaccine'],
-                                       blackout_flag=False)
-            change_individual_property(cb,
-                                       target_property_name='VaccineStatus',
-                                       target_property_value='GotBooster2',
-                                       ind_property_restrictions=[{'VaccineStatus': 'GotBooster1'}],
-                                       trigger_condition_list=['Received_Vaccine'],
-                                       blackout_flag=False)
-
-    def add_ds_rtss(self, cb, rtss_df, my_ds, high_access_ip_frac=0, rtss_target_group='random',rtss_booster1_min_age=730, cohort_month_shift=0):
-        if self.filter_by_ds:
-            rtss_df = rtss_df[rtss_df[self.rtss_ds_col].str.upper() == my_ds.upper()]
-        change_booster_IPs = False # updated in booster statements if applicable
-        
-        rtss_booster2_min_age = rtss_booster1_min_age + 365
-        rtss_booster3_min_age = rtss_booster2_min_age + 365
-    
-        if 'rtss_property_restrictions' in rtss_df.columns:
-            change_booster_IPs = True # change booster IPs when specifying coverage per booster dose
-        """Use campaign-style deployment targeted to specific ages (since births disabled in simulation)"""
-        for r, row in rtss_df.iterrows():
-            try:
-                Waning_Class = rtss_df['rtss_decay_class_col'].unique()[0]
-            except:
-                Waning_Class = "WaningEffectExponential"
-
-            vaccine_params = {"Waning_Config": {"Initial_Effect": row[self.rtss_init_eff_col],
-                                                "Decay_Time_Constant": row[self.rtss_decay_t_col],
-                                                "class": Waning_Class}}
-
-            vtype = row[self.rtss_type_col]
-            if vtype == 'booster' or vtype =='booster1':
-                """everyone who received the original vaccine has the same probability of getting a booster, regardless of IP 
-                (otherwise, there will be different booster coverages depending on the fraction of people in the high IP)
-                if campboost, receive booster between 24-35 month
-                """
-                if row[self.rtss_deploy_type_col] == 'EPI_cohort':
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': 'GotVaccine'}],
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-                elif row[self.rtss_deploy_type_col] == 'campboost':
-                    # calculate RTS,S booster day, given cohort month shift
-                    start_day0 = row[self.rtss_start_col]
-                    start_day = start_day0 - round(30.4 * cohort_month_shift)
-                    # if booster would occur before the eligible age, wait until the next year
-                    while start_day < rtss_booster1_min_age:
-                        start_day = start_day + 365
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[start_day],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': 'GotVaccine'}],
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-
-            elif vtype == 'booster2':
-                """everyone who received the original vaccine has the same probability of getting a booster, regardless of IP 
-                (otherwise, there will be different booster coverages depending on the fraction of people in the high IP)
-                if campboost, receive booster between 36-47 month
-                """
-                try:
-                    booster_restr = row[self.rtss_property_restrictions]
-                    if booster_restr == 'GotBooster1':
-                        change_booster_IPs = True
-                    if len(booster_restr) < 1:
-                        booster_restr = 'GotVaccine'
-                except:
-                    booster_restr = 'GotVaccine'
-                if row[self.rtss_deploy_type_col] == 'EPI_cohort':
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': booster_restr}],  # even if someone didn't get booster1 during the 24-month EPI visit, they can still get a booster during an EPI visit the following year
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-                elif row[self.rtss_deploy_type_col] == 'campboost':
-                    # calculate RTS,S booster day, given cohort month shift
-                    start_day0 = row[self.rtss_start_col]
-                    start_day = start_day0 - round(30.4 * cohort_month_shift)
-                    # if booster would occur before the eligible age, wait until the next year
-                    while start_day < rtss_booster2_min_age:
-                        start_day = start_day + 365
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[start_day],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': booster_restr}],  # even if someone didn't get booster1 during the first campaign, they can still get a booster during the following campaign
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-            elif vtype == 'booster3':
-                """ if campboost, receive booster between 48-59 month
-                """
-                try:
-                    booster_restr = row[self.rtss_property_restrictions]
-                    if len(booster_restr)<1:
-                        booster_restr = 'GotVaccine'
-                except:
-                    booster_restr = 'GotVaccine'
-                if row[self.rtss_deploy_type_col] == 'EPI_cohort':
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': booster_restr}],
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-                elif row[self.rtss_deploy_type_col] == 'campboost':
-                    # calculate RTS,S booster day, given cohort month shift
-                    start_day0 = row[self.rtss_start_col]
-                    start_day = start_day0 - round(30.4 * cohort_month_shift)
-                    # if booster would occur before the eligible age, wait until the next year
-                    while start_day < rtss_booster3_min_age:
-                        start_day = start_day + 365
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[start_day],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                ind_property_restrictions=[{'VaccineStatus': booster_restr}],  # even if someone didn't get booster1 during the previous campaigns, they can still get a booster during the following campaign
-                                target_group={'agemin': row[self.rtss_min_age_col], 'agemax': row[self.rtss_max_age_col]})
-            else:
-                if high_access_ip_frac > 0 and rtss_target_group != 'random':  # different coverages in different access groups
-                    if rtss_target_group == 'low':
-                        # RTSS is preferentially given to the 'low-access' group
-                        high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.rtss_coverage_col],
-                                                                            high_access_frac=1 - high_access_ip_frac)
-                        high_low_coverages = [high_low_coverages[1], high_low_coverages[0]]
-                    elif rtss_target_group == 'high':
-                        high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.rtss_coverage_col],
-                                                                            high_access_frac=high_access_ip_frac)
-                    else:
-                        print('WARNING: name for RTS,S access-group targeting not recognized.')
-                    # high-access coverage
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=high_low_coverages[0],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                target_group={'agemin': row[self.rtss_min_age_col],
-                                              'agemax': row[self.rtss_max_age_col]},
-                                ind_property_restrictions=[{'AccessToInterventions': 'higher'}])
-
-                    # low-access coverage
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=high_low_coverages[1],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                target_group={'agemin': row[self.rtss_min_age_col],
-                                              'agemax': row[self.rtss_max_age_col]},
-                                ind_property_restrictions=[{'AccessToInterventions': 'lower'}])
-
-                else:  # uniform probability of getting the vaccine
-                    add_vaccine(cb,
-                                vaccine_type='RTSS',
-                                vaccine_params=vaccine_params,
-                                start_days=[row[self.rtss_start_col]],
-                                coverage=row[self.rtss_coverage_col],
-                                repetitions=row[self.rtss_repetitions],
-                                tsteps_btwn_repetitions=row[self.rtss_tsteps_btwn_repetitions],
-                                target_group={'agemin': row[self.rtss_min_age_col],
-                                              'agemax': row[self.rtss_max_age_col]})
-
-            self.change_rtss_ips(cb,change_booster_IPs=change_booster_IPs)
-            cb.update_params({
-                "Report_Event_Recorder_Events": ['Births', 'PropertyChange', 'Received_Vaccine', 'Received_Treatment']
-            })
-
-        return len(rtss_df)
-
-
 
     def add_ds_ipti(self, cb, ipti_df, my_ds, high_access_ip_frac=0):
         if self.filter_by_ds:
@@ -853,13 +646,11 @@ class InterventionSuite:
 
 
 def add_all_interventions(cb, int_suite, my_ds='', high_access_ip_frac=0,
-                          vacc_target_group='random', rtss_target_group='random', smc_target_group='random', cm_target_group='random',
-                          rtss_booster1_min_age=730,
+                          vacc_target_group='random', smc_target_group='random', cm_target_group='random',
                           hs_df=pd.DataFrame(),
                           smc_df=pd.DataFrame(),
                           vacc_char_df=pd.DataFrame(),
                           vacc_df=pd.DataFrame(),
-                          rtss_df=pd.DataFrame(),
                           ipti_df=pd.DataFrame(),
                           addtl_smc_func=None,
                           cohort_month_shift=0):
@@ -878,11 +669,6 @@ def add_all_interventions(cb, int_suite, my_ds='', high_access_ip_frac=0,
         if has_cm:
             event_list.append('Received_Treatment')
             event_list.append('Received_Severe_Treatment')
-
-    if not rtss_df.empty:
-        has_rtss = int_suite.add_ds_rtss(cb, rtss_df, my_ds, high_access_ip_frac, rtss_target_group,rtss_booster1_min_age, cohort_month_shift)
-        if has_rtss > 0:
-            event_list.append('Received_Vaccine')
 
     if not vacc_df.empty:
         int_suite.add_triggered_vacc(cb, vacc_char_df, my_ds)

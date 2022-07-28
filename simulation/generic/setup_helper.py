@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -23,41 +24,19 @@ def tryread_df2(input_path, scen_df, id, fname):
 
 
 def check_colnames(df):
-    interventions = ['SMC', 'RTSS', 'ITN', 'CM', 'IRS', 'IPTi']
+    interventions = ['SMC', 'VACC', 'ITN', 'CM', 'IRS', 'IPTi']
     fnames = [fname for fname in [f'{int}_filename' for int in interventions] if fname not in df.columns]
     print(f"WARNING: {','.join(fnames)} not in scen_df.")
 
 
 def fix_scen_csv_access_cols(df):
-    # if any of the new columns specifying which access group each intervention should target are missing,
-    #   1) check to see whether the old columns are present and update the access group accordingly
-    #   2) if the previous version of specifying intervention correlation is absent, assume no access-group targeting
-    # Old columns were: 'intervention_correlation', 'intervention_cor_cm', and 'antiaccess_high'
-    # New columns are: 'rtss_target_group', 'smc_target_group', and 'cm_target_group'
-    if 'rtss_target_group' not in df.columns:
-        if 'intervention_correlation' in df.columns:
-            df.loc[df.intervention_correlation == 0, 'rtss_target_group'] = 'random'
-            df.loc[df.intervention_correlation == 1, 'rtss_target_group'] = 'high'
-            if 'antiaccess_high' in df.columns:
-                df.loc[(df.intervention_correlation == 1) & (df.antiaccess_high == 'SMC'), 'rtss_target_group'] = 'low'
-        else:
-            df['rtss_target_group'] = 'random'
+    # if any of the new columns specifying which access group each intervention should target are missing, assume no access-group targeting
+    if 'vacc_target_group' not in df.columns:
+        df['vacc_target_group'] = 'random'
     if 'smc_target_group' not in df.columns:
-        if 'intervention_correlation' in df.columns:
-            df.loc[df.intervention_correlation == 0, 'smc_target_group'] = 'random'
-            df.loc[df.intervention_correlation == 1, 'smc_target_group'] = 'high'
-            if 'antiaccess_high' in df.columns:
-                df.loc[(df.intervention_correlation == 1) & (df.antiaccess_high == 'RTSS'), 'smc_target_group'] = 'low'
-        else:
-            df['smc_target_group'] = 'random'
+        df['smc_target_group'] = 'random'
     if 'cm_target_group' not in df.columns:
-        if 'intervention_correlation' in df.columns:
-            df.loc[df.intervention_correlation == 0, 'cm_target_group'] = 'random'
-            df.loc[df.intervention_correlation == 1, 'cm_target_group'] = 'high'
-            if 'intervention_cor_cm' in df.columns:
-                df.loc[~df.intervention_cor_cm, 'cm_target_group'] = 'random'
-        else:
-            df['cm_target_group'] = 'random'
+        df['cm_target_group'] = 'random'
     return df
 
 
@@ -85,16 +64,16 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
         scen_df['smc_coverage'] = 0
     if 'ipti_coverage' not in scen_df.columns:
         scen_df['ipti_coverage'] = 0
-    if 'rtss_coverage' not in scen_df.columns:
-        scen_df['rtss_coverage'] = 0
-    if 'rtss_mode' not in scen_df.columns:
-        scen_df['rtss_mode'] = 'constant'
-    if 'rtss_booster1_min_age' not in scen_df.columns:
-        scen_df['rtss_booster1_min_age'] = 730
+    if 'vacc_coverage' not in scen_df.columns:
+        scen_df['vacc_coverage'] = 0
+    if 'vacc_characteristics' not in scen_df.columns:
+        scen_df['vacc_characteristics'] = 0
+    if 'vacc_mode' not in scen_df.columns:
+        scen_df['vacc_mode'] = 'constant'
     if 'ipti_mode' not in scen_df.columns:
         scen_df['ipti_mode'] = ''
-    if 'rtss_target_group' not in scen_df.columns:
-        scen_df['rtss_target_group'] = 'random'
+    if 'vacc_target_group' not in scen_df.columns:
+        scen_df['vacc_target_group'] = 'random'
     if 'smc_target_group' not in scen_df.columns:
         scen_df['smc_target_group'] = 'random'
     if 'cm_target_group' not in scen_df.columns:
@@ -134,20 +113,25 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
     mAb = Maternal_Antibody_Protection * mAb_vs_EIR(annual_eir)
     cb.update_params({'Maternal_Antibody_Protection': mAb})
 
+    vacc_char_sub = re.search(r'hh\d+_nn\d+', scen_row['vacc_characteristics'][0])
+    if vacc_char_sub:
+        vacc_char_vals = vacc_char_sub[0]
+    else:
+        vacc_char_vals = 'NA'
     return {'seasonality': scen_row['seasonality'][0],
             'Annual EIR': annual_eir,
             'mAb': mAb,
             'cm_coverage': scen_row['cm_coverage'][0],
-            'rtss_coverage': scen_row['rtss_coverage'][0],
+            'vacc_coverage': scen_row['vacc_coverage'][0],
             'smc_coverage': scen_row['smc_coverage'][0],
             'ipti_coverage': scen_row['ipti_coverage'][0],
-            'rtss_target_group': scen_row['rtss_target_group'][0],
+            'vacc_target_group': scen_row['vacc_target_group'][0],
             'smc_target_group': scen_row['smc_target_group'][0],
             'cm_target_group': scen_row['cm_target_group'][0],
             'frac_high_access': scen_row['frac_high_access'][0],
-            'rtss_mode': scen_row['rtss_mode'][0],
-            'minBoostAge': scen_row['rtss_booster1_min_age'][0],
-            'ipti_mode': scen_row['ipti_mode'][0]
+            'vacc_mode': scen_row['vacc_mode'][0],
+            'ipti_mode': scen_row['ipti_mode'][0],
+            'vacc_char': vacc_char_vals
             }
 
 
@@ -246,30 +230,26 @@ def add_generic_interventions(cb, projectpath, scen_df, id, ds_name='run_col', c
     int_suite.hs_ds_col = ds_name
     int_suite.ipti_ds_col = ds_name
     int_suite.smc_ds_col = ds_name
-    int_suite.rtss_ds_col = ds_name
 
     input_path = os.path.join(projectpath, 'simulation_inputs')
     hs_df = tryread_df2(input_path, scen_df, id, 'CM_filename')
     ipti_df = tryread_df2(input_path, scen_df, id, 'IPTi_filename')
     smc_df = tryread_df2(input_path, scen_df, id, 'SMC_filename')
-    rtss_df = tryread_df2(input_path, scen_df, id, 'RTSS_filename')
     vacc_char_df = tryread_df2(input_path, scen_df, id, 'vacc_characteristics')
-    vacc_df = tryread_df2(input_path, scen_df, id, 'vacc_campaigns')
+    vacc_df = tryread_df2(input_path, scen_df, id, 'VACC_filename')
 
     add_all_interventions(cb,
                           int_suite,
                           my_ds='run',  # to not subset dataframe as each intervention csv is generic
                           high_access_ip_frac=scen_df.at[id, 'frac_high_access'],
-                          rtss_target_group=scen_df.at[id, 'rtss_target_group'],
+                          vacc_target_group=scen_df.at[id, 'vacc_target_group'],
                           smc_target_group=scen_df.at[id, 'smc_target_group'],
                           cm_target_group=scen_df.at[id, 'cm_target_group'],
-                          rtss_booster1_min_age=scen_df.at[id, 'rtss_booster1_min_age'],
                           hs_df=hs_df,
                           ipti_df=ipti_df,
                           smc_df=smc_df,
                           vacc_char_df=vacc_char_df,
                           vacc_df=vacc_df,
-                          rtss_df=rtss_df,
                           cohort_month_shift=cohort_month_shift)
 
     return {'Scenario_id': id}

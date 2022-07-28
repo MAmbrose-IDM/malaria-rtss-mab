@@ -189,7 +189,7 @@ for vacc in vacc_coverage:
         num_vacc = len(vacc_coverages)
         vacc_camp_df = pd.DataFrame({
             'DS_Name': 'all',
-            'coverave_levels': vacc_coverages,
+            'coverage_levels': vacc_coverages,
             'simday': vacc_days,
             'deploy_type': ['EPI_cohort'] * num_vacc,
             'agemin': [agemin_vacc] * num_vacc,
@@ -277,7 +277,7 @@ df['demographics_filename'] = [os.path.join(base_scenario_filepath, 'Demographic
 df['CM_filename'] = [os.path.join(base_scenario_filepath, 'CM', 'CM_constant_%icoverage.csv' % (100 * float(yy))) for yy in df['cm_coverage']]
 df['SMC_filename'] = [os.path.join(base_scenario_filepath, 'SMC', 'SMC_%s_%icoverage.csv' % (vacc_filename_description, 100 * float(yy))) for yy in df['smc_coverage']]
 df.loc[df.smc_coverage == '0', 'SMC_filename'] = ''
-df['vacc_campaigns'] = [os.path.join(base_scenario_filepath, 'vaccines', 'RTSS_campaign_%s_%icoverage_%ibooster.csv' % (vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc))) for yy in df['vacc_coverage']]
+df['VACC_filename'] = [os.path.join(base_scenario_filepath, 'vaccines', 'RTSS_campaign_%s_%icoverage_%ibooster.csv' % (vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc))) for yy in df['vacc_coverage']]
 
 scen_csv = 'coordinator_files/validation_%s.csv' % validation_scenario
 df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), index=False)

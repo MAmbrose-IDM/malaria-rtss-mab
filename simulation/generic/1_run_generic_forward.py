@@ -23,43 +23,15 @@ datapath, projectpath = load_box_paths(parser_default=SetupParser.default_block)
 
 # REFERENCE CSV FOR TRANSMISSION SETTINGS
 """ reference csv's examples
+TESTING
+test_mAb.csv
 VALIDATION
-'generic_validation_SweepEIR_noBooster.csv'   
-'generic_validation_kintampo_approximation.csv'  
-'generic_validation_cases_averted_by_age.csv'
-'generic_validation_ChandramohanTrial.csv'  
-INTERVENTION SWEEPS (SMC)
-generic_settings_test_SMC.csv
-generic_factorial_v1.csv
-generic_rtss_eir_cm_sweep.csv
-generic_heatmap_highseason_cor1_SMC.csv
-generic_heatmap_highseason_cor0_SMC.csv
-generic_heatmap_highseason_RTSSbooster_cor1_SMC.csv
-generic_heatmap_highseason_RTSSbooster_cor0_SMC.csv
-INTERVENTION SWEEPS ACESS CORRELATION(SMC)
-generic_accesscorrelation_SMC.csv
-generic_accesscorrelation_independentCM_SMC.csv
-generic_antiaccesscorrelation_independentCM_SMC.csv
-INTERVENTION SWEEPS (IPTi)
-generic_noRTSS_IPTi.csv
-generic_RTSS_IPTi.csv
-generic_accesscorrelation_independentCM_IPTi.csv
-generic_antiaccesscorrelation_independentCM_IPTi.csv
-INTERVENTION SWEEPS (RTSS only)
-generic_settings_test_RTSS.csv
-generic_campboost_RTSS.csv
-INTERVENTION SWEEPS (for summary plots)
-generic_cm_sweep_SMC.csv
-generic_eir_sweep_SMC.csv
-generic_season_sweep_SMC.csv
-generic_rtss_sweep.csv
+validation_Phase3_noBooster_cleaned.csv
 NO-INTERVENTIONS
-generic_eir_cm_sweep_no_RTSS.csv
+___.csv
 """
-scen_csv = 'test_mAb.csv'
-
-# 'rtss_validation_ChandramohanTrial_ageEIR'  # 'generic_validation_noSARisk'
-expname = scen_csv.replace('.csv', '')  # + '_minSeasonBoostAge18m'
+scen_csv = 'validation_Phase3_noBooster_cleaned.csv'
+expname = scen_csv.replace('.csv', '_TEST')
 ds_name = 'run_col'
 
 num_seeds = 1
