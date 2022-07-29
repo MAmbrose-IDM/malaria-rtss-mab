@@ -16,7 +16,7 @@ experiments = {}
 # ... or can specify specific set of experiments by id
 experiments = {
     'TEST_validation_phase3_wBooster': '5a34bc52-b20e-ed11-a9fb-b88303911bc1',
-    # 'TEST_validation_phase3_noBooster': '1ffe1a64-b40e-ed11-a9fb-b88303911bc1',
+    'TEST_validation_phase3_noBooster': '1ffe1a64-b40e-ed11-a9fb-b88303911bc1',
 }
 
 sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',
