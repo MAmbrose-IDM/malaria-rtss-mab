@@ -27,10 +27,11 @@ def get_parameter_space():
         #              'seasonal' (all doses seasonally)
         #              'campboost' (EPI main dose and 1 campaign booster dose),
         #              'campboost2' (EPI main dose and 2 campaign booster doses)
-        'initial_hhs': [20, 40, 60],
-        'initial_nns': [1.4, 4],
-        'booster_hhs': [20, 40, 60],
-        'booster_nns': [1.4, 4],
+        'initial_hhs': [30, 40],  # [20, 40, 60],
+        'initial_nns': [1.4, 2, 4],  # [1.4, 4],
+        'booster_hhs': [30, 40],  # [20, 40, 60],
+        'booster_nns': [1.4, 2, 4],  # [1.4, 4],
+        # for RTS,S, it seems that the best parameters are hh=40, nn=2
         # Intervention targeting
         'vacc_target_group': ['random'],
         # specify whether vaccine is targeted toward an access group or given at random
@@ -60,7 +61,7 @@ def get_parameter_space():
         'booster_fast_frac': 0.88,
         'booster_k1': 46,
         'booster_k2': 583,
-        'booster_max_efficacy': 0.8,
+        'booster_max_efficacy': 0.6,  # 0.8
     }
     return parameter_space
 
@@ -115,13 +116,13 @@ def create_intervention_inputs(param_dic, projectpath):
             vacc_coverages[0] = vacc
             num_vacc = len(vacc_coverages)
             vacc_camp_df = pd.DataFrame({
-                'DS_Name': 'all',
+                'DS_Name': ['all'] * num_vacc,
                 'coverage_levels': vacc_coverages,
                 'vacc_day': vacc_days,
                 'deploy_type': vacc_deploy_type * num_vacc,
                 'agemin': [agemin_vacc] * num_vacc,
                 'agemax': [agemax_vacc] * num_vacc,
-                'runcol': 'run'
+                'runcol': ['run'] * num_vacc
             })
             vacc_camp_df.to_csv(os.path.join(projectpath, 'simulation_inputs', 'vaccines',
                                    'RTSS_campaign_%s_%icoverage_%ibooster.csv' % (
@@ -129,8 +130,8 @@ def create_intervention_inputs(param_dic, projectpath):
             vacc_char_files = []
             for ii in range(len(initial_hhs)):
                 for jj in range(len(initial_nns)):
-                    cur_filename = 'vaccines/RTSS_characteristics_%s_hh%i_nn%i.csv' % (vacc_filename_description, initial_hhs[ii],
-                                                                              round(100*initial_nns[jj]))
+                    cur_filename = 'vaccines/RTSS_characteristics_%s_hh%i_nn%i_bb%i.csv' % (vacc_filename_description, initial_hhs[ii],
+                                                                              round(100*initial_nns[jj]), round(100*booster_max_efficacy))
                     vacc_char_df = pd.DataFrame({
                         'vacc_type': ['initial', 'booster'],
                         'vacc_waning_type': ['pkpd']*2,
@@ -153,7 +154,7 @@ def create_intervention_inputs(param_dic, projectpath):
             df_all_years = pd.DataFrame()
         else:
             df_r1 = pd.DataFrame({'round': [1], 'coverage': [smc], 'max_age': [5],
-                              'simday': [(smc_start_month-1)*30], 'duration': [-1], 'run_col': 'run'})
+                                  'simday': [(smc_start_month-1)*30], 'duration': [-1], 'run_col': ['run']})
             df_base_year = df_r1.copy()
             for rr in range(num_smc_rounds-1):
                 df_new_round = df_r1.copy()

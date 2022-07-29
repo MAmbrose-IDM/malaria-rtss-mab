@@ -18,12 +18,20 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-booster_string = 'no.boost'  #'no.boost' or 'boost'
+booster_string = 'boost'  #'no.boost' or 'boost'
 if(booster_string == 'boost'){
   exp_name = 'validation_phase3_wBooster'  # TEST_validation_phase3_wBooster
-} else exp_name = 'validation_phase3_noBooster'
+  exp_name2 = 'TEST_validation_phase3_wBooster_firstParamSet' # NA
+} else {
+  exp_name = 'validation_phase3_noBooster'
+  exp_name2 = 'TEST_validation_phase3_noBooster_firstParamSet'  # NA
+}
 exp_filepath = file.path(projectpath, 'simulation_output', exp_name)
 cases_filepath = file.path(exp_filepath, 'All_Age_monthly_Cases.csv')
+if(!is.na(exp_name2)){
+  exp_filepath2 = file.path(projectpath, 'simulation_output', exp_name2)
+  cases_filepath2 = file.path(exp_filepath2, 'All_Age_monthly_Cases.csv')
+}
 # reference_filepath = file.path(datapath, 'rtss_phase3/kintampo_trial_summary_3month.csv')
 reference_filepath = file.path(datapath, 'rtss_phase3/RTSS_32month_allCases.csv')
 
@@ -31,6 +39,11 @@ reference_filepath = file.path(datapath, 'rtss_phase3/RTSS_32month_allCases.csv'
 # Process simulation output
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 cases_df = read.csv(cases_filepath)
+if(!is.na(exp_name2)){
+  cases_df2 = read.csv(cases_filepath2)
+  cases_df2$vacc_char = paste0(cases_df2$vacc_char, '_sameBoost')
+  cases_df = merge(cases_df, cases_df2, all=TRUE)
+}
 # subset to time after vaccination
 vaccine_date = as.Date('2021-01-01')  # date vaccination given in simulations
 cases_df$date = as.Date(cases_df$date)
@@ -167,6 +180,9 @@ vacc_char_sets = unique(comparison_df2$vacc_char)
 rough_probs = rep(NA, length(vacc_char_sets))
 for(vc in 1:length(vacc_char_sets)){
   comparison_cur = comparison_df2[comparison_df2$vacc_char==vacc_char_sets[vc],]
+  print(nrow(comparison_cur))
   rough_probs[vc] = sum(log(comparison_cur$ave_prob), na.rm=TRUE)
 }
 print(paste0('Our vaccine winner is: ', vacc_char_sets[rough_probs == max(rough_probs)]))
+df = data.frame('vacc_char'=vacc_char_sets, 'rough_loglik'=rough_probs)
+write.csv(df, paste0(exp_filepath, '/compare_vacc_char_sets.csv'))

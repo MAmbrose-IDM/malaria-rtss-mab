@@ -1,6 +1,7 @@
 # plot_mAb_efficacy_time
 
 library(ggplot2)
+library(viridis)
 
 setwd("C:/Users/moniqueam/Documents/malaria-rtss-mab")
 source(file.path('simulation', 'load_paths.R'))
@@ -44,6 +45,7 @@ rtss3_k1=46
 rtss3_k2=583
 rtss3_m1 = 280
 # additional parameters to match previous curve along with the concentration params
+rtss3_max_efficacy = 0.8
 rtss3_initial_concentration = 620
 rtss3_hh = 40
 rtss3_nn = 1.4
@@ -53,14 +55,14 @@ rtss3_nn = 1.4
 ######################################################################
 # function using PKPD to get concentration and efficacy through time
 ######################################################################
-calc_concentration_through_time = function(initial_concentration, max_efficacy, fast_frac, k1, k2, xx=seq(1,365*3)){
+calc_concentration_through_time = function(initial_concentration, fast_frac, k1, k2, xx=seq(1,365*3)){
   # concentration_through_time = c(initial_concentration*exp(-xx[xx<=time_switch]/k1), (initial_concentration*exp(-1*time_switch/k1))*exp(-(xx[xx>time_switch]-time_switch)/k2))
   concentration_through_time = initial_concentration*(fast_frac*exp(-xx / k1) + (1-fast_frac)*exp(-xx / k2))
   return(concentration_through_time)
 }
 
 calc_effacy_through_time = function(initial_concentration, max_efficacy, fast_frac, k1, k2, m2=NA, hh=NA, nn=NA, hill_func=TRUE, xx=seq(1,365*3), booster_day=NA, create_plot_panel=FALSE){  # time_switch
-  concentration_through_time = calc_concentration_through_time(initial_concentration, max_efficacy, fast_frac, k1, k2, xx)
+  concentration_through_time = calc_concentration_through_time(initial_concentration, fast_frac, k1, k2, xx)
 
   if(!is.na(booster_day)){
     after_booster_initial_concentration = concentration_through_time[booster_day] + initial_concentration
@@ -131,29 +133,28 @@ max_efficacy = rtss3_max_efficacy
 fast_frac=rtss3_fast_frac
 k1=rtss3_k1
 k2=rtss3_k2
-hh=rtss3_hh
-nn=rtss3_nn
+# hh=rtss3_hh
+# nn=rtss3_nn
+# eff_conc = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
+# lines(eff_conc, lwd=2, col='green')
+# # a couple other parameter sets
+# initial_concentration = rtss3_initial_concentration
+# max_efficacy = rtss3_max_efficacy
+# fast_frac=rtss3_fast_frac
+# k1=rtss3_k1
+# k2=rtss3_k2
+# hh=20
+# nn=rtss1_nn
+# eff_conc = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
+# lines(eff_conc, lwd=2, col='blue')
+hh=40
+nn=2
 eff_conc = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
-lines(eff_conc, lwd=2, col='green')
-
-# a couple other parameter sets
-initial_concentration = rtss3_initial_concentration
-max_efficacy = rtss3_max_efficacy
-fast_frac=rtss3_fast_frac
-k1=rtss3_k1
-k2=rtss3_k2
-hh=20
-nn=rtss1_nn
-eff_conc = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
-lines(eff_conc, lwd=2, col='blue')
-hh=60
-nn=4#rtss1_nn
-eff_conc = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
-lines(eff_conc, lwd=2, col='dodgerblue')
-
-
-legend('topright', c('RTSS analysis (initial=0.8, duration=592)', 'RTSS report (initial=0.8, duration=410)', 'approximate match with PKPD', 'other PKPD params (v1)', 'other PKPD params (v2)'), 
-       col=c('black', 'grey', 'green', 'blue', 'dodgerblue'), lwd=2, bty='n')
+lines(eff_conc, lwd=2, col='salmon')
+# legend('topright', c('RTSS analysis (initial=0.8, duration=592)', 'RTSS report (initial=0.8, duration=410)', 'approximate match with PKPD', 'other PKPD params (v1)', 'other PKPD params (v2)', 'selected from Phase 3 comparisons'), 
+#        col=c('black', 'grey', 'green', 'blue', 'dodgerblue', 'salmon'), lwd=2, bty='n')
+legend('topright', c('RTSS analysis (initial=0.8, duration=592)', 'RTSS report (initial=0.8, duration=410)', 'selected from Phase 3 comparisons'), 
+       col=c('black', 'grey', 'salmon'), lwd=2, bty='n')
 dev.off()
 
 
@@ -219,7 +220,7 @@ lines(init*exp(xx*-1/dur), ylab='protective efficacy', xlab='days since dose', b
 
 # manually specify decay-of-efficacy vector
 color='dodgerblue'
-efficacy_time = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=m1, k2=m1, nn=nn, hh=hh, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
+efficacy_time = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, nn=nn, hh=hh, hill_func=TRUE, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
 lines(efficacy_time, col=color, lwd=2)
 
 legend('topright', c('exponential (duration=1095)', 'exponential (duration=592)', 'exponential (duration=410)', 'exponential (duration=200)', 'E(T)'), 
@@ -247,7 +248,7 @@ make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_
   concentration_through_time = initial_concentration*exp(-xx/m1)
   lines(xx, concentration_through_time, col='blue')
   # current PKPD with biphasic
-  concentration_through_time2 =  calc_concentration_through_time(initial_concentration, max_efficacy, fast_frac, k1, k2, xx)
+  concentration_through_time2 =  calc_concentration_through_time(initial_concentration, fast_frac, k1, k2, xx)
   lines(xx, concentration_through_time2, type='l', ylim=c(0,initial_concentration), bty='L', xlab='time', main='Concentration through time', col='red')
 }
 
@@ -288,18 +289,27 @@ k1=rtss2_k1
 k2=rtss2_k2
 m1 = rtss2_m1
 # compare roughly data-extracted values with simple exponential versus biphasic decay
-png(filename=paste0(projectpath, '/nonSimFigures/RTSS_concDecay_wData.png'), width=6, height=6, res=900, units='in')
+conc_col='titre_eu_ml'
+png(filename=paste0(projectpath, '/nonSimFigures/RTSS_concDecay_wData.png'), width=9, height=4.5, res=900, units='in')
 par(mfrow=c(1,2))
 max_days = round(365*3.5)
 # df_mg = read.csv(paste0(datapath, '/vacc_pkpd/White_517_boost.csv'))
 # make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='5-17 months (booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
 df_mg = read.csv(paste0(datapath, '/vacc_pkpd/White_517_noBoost.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='5-17 months (no booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
-legend('topleft', c('data','exponential', 'biphasic'), pch=c(20,NA,NA), lwd=c(NA,1,1), col=c('black','blue','red'), bty='n')
+make_concentration_plot(df_mg, fast_frac=rtss2_fast_frac, k1=rtss2_k1, k2=rtss2_k2, m1=rtss2_m1, title='5-17 months (no booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
+# add Imperial curves
+initial_concentration = df_mg[[conc_col]][1]
+concentration_through_time2 =  calc_concentration_through_time(initial_concentration, fast_frac=rtss3_fast_frac, k1=rtss3_k1, k2=rtss3_k2, xx=1:max_days)
+lines(1:max_days, concentration_through_time2, type='l', col='darkred')
+legend('topright', c('data','exponential', 'biphasic', 'Imperial'), pch=c(20,NA,NA,NA), lwd=c(NA,1,1,1), col=c('black','blue','red', 'darkred'), bty='n')
 # df_mg = read.csv(paste0(datapath, '/vacc_pkpd/White_612_boost.csv'))
 # make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='6-12 weeks (booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
 df_mg = read.csv(paste0(datapath, '/vacc_pkpd/White_612_noBoost.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='6-12 weeks (no booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
+make_concentration_plot(df_mg, fast_frac=rtss2_fast_frac, k1=rtss2_k1, k2=rtss2_k2, m1=rtss2_m1, title='6-12 weeks (no booster)', conc_col='titre_eu_ml', time_col='time_years', max_days=max_days)
+# add Imperial curves
+initial_concentration = df_mg[[conc_col]][1]
+concentration_through_time2 =  calc_concentration_through_time(initial_concentration, fast_frac=rtss3_fast_frac, k1=rtss3_k1, k2=rtss3_k2, xx=1:max_days)
+lines(1:max_days, concentration_through_time2, type='l', col='darkred')
 par(mfrow=c(1,1))
 dev.off()
 
@@ -310,7 +320,7 @@ k1=rtss3_k1
 k2=rtss3_k2
 m1 = rtss3_m1
 # compare roughly data-extracted values with simple exponential versus biphasic decay
-png(filename=paste0(projectpath, '/nonSimFigures/RTSS_concDecay_wData_ImperialParams.png'), width=6, height=6, res=900, units='in')
+png(filename=paste0(projectpath, '/nonSimFigures/RTSS_concDecay_wData_ImperialParams.png'), width=6, height=3, res=900, units='in')
 par(mfrow=c(1,2))
 max_days = round(365*3.5)
 # df_mg = read.csv(paste0(datapath, '/vacc_pkpd/White_517_boost.csv'))
@@ -337,22 +347,52 @@ max_efficacies=c(0.8,0.95)
 fast_frac=mab_fast_frac
 k1=mab_k1
 k2=mab_k2
-m2s = c(-0.1, -1, -10)
-colors=c('red', 'blue', 'grey')
+nns = c(1.4,2,4)
+hhs = c(6,30)
+color_set=list(c(rgb(1,0,0), rgb(0,0,1), rgb(0.3,0.3,0.3)),c(rgb(1,0.5,0.5), rgb(0.5,0.5,1), rgb(0.7,0.7,0.7)))
 lwds = c(1,2)
 ltys=c(1,2, 3)
-png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_OldParams.png'), width=6, height=2.5, res=900, units='in')
+png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_OldParams.png'), width=6, height=5, res=900, units='in')
 plot(NA, xlim=c(0,max(xx)), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
 for(i1 in 1:length(initial_concentrations)){
   for(i2 in 1:length(max_efficacies)){
-    for(i3 in 1:length(m2s)){
-      lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, m2=m2s[i3], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
-            col=colors[i1], lwd=lwds[i2], lty=ltys[i3])
+    for(i3 in 1:length(nns)){
+      for(i4 in 1:length(hhs)){
+        lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, nn=nns[i3], hh=hhs[i4], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+              col=color_set[[i4]][i3], lwd=lwds[i2], lty=ltys[i1])
+      }
     }
   }
 }
 dev.off()
 
+
+# parameter sets currently (7/29/2022) planned for Sept GR analyses
+initial_concentrations=c(1000)
+lwds=c(1)
+max_efficacies=c(0.8, 0.9, 0.95)
+ltys = c(3, 2, 1)
+fast_frac=0.7
+k1=8
+k2=100
+nns = c(2)
+hhs = c(10, 20, 40)  # c(5, 10, 20, 40, 60)
+colors = viridis(length(hhs))
+png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams.png'), width=6, height=5, res=900, units='in')
+plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
+for(i1 in 1:length(initial_concentrations)){
+  for(i2 in 1:length(max_efficacies)){
+    for(i3 in 1:length(nns)){
+      for(i4 in 1:length(hhs)){
+        lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, nn=nns[i3], hh=hhs[i4], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+              col=colors[i4], lwd=lwds[i1], lty=ltys[i2])
+      }
+    }
+  }
+}
+legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
+legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
+dev.off()
 
 ##############################################################################
 # booster doses
