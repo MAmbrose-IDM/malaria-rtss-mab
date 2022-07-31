@@ -51,6 +51,16 @@ rtss3_hh = 40
 rtss3_nn = 1.4
 
 
+# params after fitting with Phase 3 data
+rtss4_fast_frac=0.88
+rtss4_k1=46
+rtss4_k2=583
+rtss4_max_efficacy = 0.8  # for booster, was 0.6
+rtss4_initial_concentration = 620
+rtss4_hh = 40
+rtss4_nn = 2
+
+
 
 ######################################################################
 # function using PKPD to get concentration and efficacy through time
@@ -68,7 +78,8 @@ calc_effacy_through_time = function(initial_concentration, max_efficacy, fast_fr
     after_booster_initial_concentration = concentration_through_time[booster_day] + initial_concentration
     bb = 1:(max(xx)-booster_day)
     concentration_through_time = c(concentration_through_time[1:booster_day], 
-                                   after_booster_initial_concentration*(fast_frac*exp(-bb / k1) + (1-fast_frac)*exp(-bb / k2)))
+                                   calc_concentration_through_time(initial_concentration=after_booster_initial_concentration, fast_frac=fast_frac, k1=k1, k2=k2, xx=bb))
+                                   # after_booster_initial_concentration*(fast_frac*exp(-bb / k1) + (1-fast_frac)*exp(-bb / k2)))
   }
   if(hill_func){
     efficacy_through_time = max_efficacy / (1+(hh/concentration_through_time)^nn)
@@ -394,6 +405,9 @@ legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
 legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
 dev.off()
 
+
+
+
 ##############################################################################
 # booster doses
 ##############################################################################
@@ -410,6 +424,23 @@ booster_day = 365
 png(filename=paste0(projectpath, '/nonSimFigures/est_mAb_pkpd_wBoosterDay', booster_day, '.png'), width=6, height=2.5, res=900, units='in')
 eff_conc_pkpd = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, m2=m2, xx=xx, booster_day=booster_day, create_plot_panel=TRUE)
 dev.off()
+
+
+# from RTSS
+xx=1:(365*3)
+fast_frac = rtss4_fast_frac
+k1=rtss4_k1
+k2=rtss4_k2
+max_efficacy=rtss4_max_efficacy
+initial_concentration=rtss4_initial_concentration
+initial_concentration_booster = rtss4_initial_concentration/2
+hh=rtss4_hh
+nn=rtss4_nn
+booster_day=547 # 365, 547
+png(filename=paste0(projectpath, '/nonSimFigures/est_rtss_pkpd_wBoosterDay', booster_day, '.png'), width=6, height=2.5, res=900, units='in')
+eff_conc_pkpd = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, xx=xx, booster_day=booster_day, hill_func=TRUE, create_plot_panel=TRUE)
+dev.off()
+
 
 
 # _paramSet2

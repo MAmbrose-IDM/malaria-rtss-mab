@@ -1,5 +1,5 @@
 # RTSS_validation_Phase3.R
-# August 2021
+# July 2022
 # create plots of RTS,S simluation output to compare against Figure S2.4 from Penny et al. 
 
 library(lubridate)
@@ -18,36 +18,45 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-booster_string = 'boost'  #'no.boost' or 'boost'
+booster_string = 'no.boost'  #'no.boost' or 'boost'
 if(booster_string == 'boost'){
-  exp_name = 'validation_phase3_wBooster'  # TEST_validation_phase3_wBooster
-  exp_name2 = 'TEST_validation_phase3_wBooster_firstParamSet' # NA
+  exp_name1 = 'TEST_validation_phase3_wBooster_firstParamSet'; bb2='_bb80' # NA
+  exp_name2 = 'validation_phase3_wBooster'; bb1 = '_bb60'  # TEST_validation_phase3_wBooster
+  exp_name3 = 'validation_Phase3_wBooster_p1_cleaned_4seeds'; bb3=''
+  exp_name4 = 'validation_Phase3_wBooster_p2_cleaned_4seeds'; bb4=''
+  exp_names = c(exp_name1, exp_name2, exp_name3, exp_name4)
+  bbs = c(bb1, bb2, bb3, bb4)
 } else {
-  exp_name = 'validation_phase3_noBooster'
-  exp_name2 = 'TEST_validation_phase3_noBooster_firstParamSet'  # NA
+  exp_name1 = 'TEST_validation_phase3_noBooster_firstParamSet'; bb2=''  # NA
+  exp_name2 = 'validation_phase3_noBooster'; bb1=''
+  exp_names = c(exp_name1, exp_name2)
+  bbs = c(bb1, bb2)
 }
-exp_filepath = file.path(projectpath, 'simulation_output', exp_name)
-cases_filepath = file.path(exp_filepath, 'All_Age_monthly_Cases.csv')
-if(!is.na(exp_name2)){
-  exp_filepath2 = file.path(projectpath, 'simulation_output', exp_name2)
-  cases_filepath2 = file.path(exp_filepath2, 'All_Age_monthly_Cases.csv')
-}
+
 # reference_filepath = file.path(datapath, 'rtss_phase3/kintampo_trial_summary_3month.csv')
 reference_filepath = file.path(datapath, 'rtss_phase3/RTSS_32month_allCases.csv')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Process simulation output
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-cases_df = read.csv(cases_filepath)
-if(!is.na(exp_name2)){
-  cases_df2 = read.csv(cases_filepath2)
-  cases_df2$vacc_char = paste0(cases_df2$vacc_char, '_sameBoost')
-  cases_df = merge(cases_df, cases_df2, all=TRUE)
+# combine separately-run experiments with different vaccine parameter sets
+for (ee in 1:length(exp_names)){
+  exp_filepath = file.path(projectpath, 'simulation_output', exp_names[ee])
+  cases_filepath = file.path(exp_filepath, 'All_Age_monthly_Cases.csv')
+  cases_df_cur = read.csv(cases_filepath)
+  cases_df_cur$vacc_char = paste0(cases_df_cur$vacc_char, bbs[ee])
+  if (ee==1){
+    cases_df = cases_df_cur
+  } else{
+    cases_df = merge(cases_df, cases_df_cur, all=TRUE)
+  }
 }
+
 # subset to time after vaccination
 vaccine_date = as.Date('2021-01-01')  # date vaccination given in simulations
 cases_df$date = as.Date(cases_df$date)
 cases_df = cases_df[cases_df$date >= vaccine_date,]
+
 
 # get months since vaccination
 elapsed_months <- function(start_date, end_date) {
@@ -71,9 +80,12 @@ cases_df_grouped = cases_df %>%
   ) %>%
   dplyr::ungroup()
 
+# set the simulations without vaccination to have the same vacc_char=NA
+cases_df_grouped$vacc_char[cases_df_grouped$vacc_coverage <0.001] = NA
+
 # get averages across runs
 cases_df_ave = cases_df_grouped %>%
-  dplyr::group_by(Scenario_id, time.group, Annual.EIR, vacc_coverage, vacc_char, seasonality) %>%
+  dplyr::group_by(time.group, Annual.EIR, vacc_coverage, vacc_char, seasonality) %>%  # Scenario_id
   dplyr::summarise(clinical_cases = mean(total_cases),
                    severe_cases = mean(total_severe_cases),
                    pfpr = mean(average_pfpr),
@@ -144,7 +156,7 @@ comparison_df = merge(comparison_df_sim_only, ref_df_subset, by = c('time.group'
 
 # plot similar to S2.4
 gg = ggplot(data = comparison_df) +
-  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(vacc_char)), lwd = 2) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(vacc_char)), lwd = 1) +
   geom_point(aes(x = time_since_3rd_dose, y = PE2)) +
   geom_errorbar(aes(x = time_since_3rd_dose, ymin=PE2l, ymax=PE2u)) +
   theme_light() +
@@ -186,3 +198,24 @@ for(vc in 1:length(vacc_char_sets)){
 print(paste0('Our vaccine winner is: ', vacc_char_sets[rough_probs == max(rough_probs)]))
 df = data.frame('vacc_char'=vacc_char_sets, 'rough_loglik'=rough_probs)
 write.csv(df, paste0(exp_filepath, '/compare_vacc_char_sets.csv'))
+
+
+
+# plot the selected values from Phase 3 and Chandramohan
+if(booster_string == 'boost'){
+  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200_bb60', 'hh40_nn200_bb80'),]
+} else{
+  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200'),]
+}
+gg2 = ggplot(data = comparison_df3) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(vacc_char)), lwd = 1) +
+  geom_point(aes(x = time_since_3rd_dose, y = PE2)) +
+  geom_errorbar(aes(x = time_since_3rd_dose, ymin=PE2l, ymax=PE2u)) +
+  theme_light() +
+  ylab('efficacy against clinical malaria') +
+  xlab('time since third dose (years)') +
+  ylim(-0.5, 1) + 
+  facet_wrap(facets='site',nrow=3)
+f_save_plot(gg2, paste0('PE2_comparison_SelectParams'),
+            file.path(exp_filepath), width = 12, height = 8, units = 'in', device_format = device_format)
+

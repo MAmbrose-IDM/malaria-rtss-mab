@@ -33,8 +33,8 @@ class monthlyTreatedCasesAnalyzer(BaseAnalyzer):
         self.end_year = end_year
 
     # added to bypass failed cases
-    # def filter(self, simulation):
-    #     return simulation.status.name == 'Succeeded'
+    def filter(self, simulation):
+        return simulation.status.name == 'Succeeded'
 
     def select_simulation_data(self, data, simulation):
 
@@ -93,11 +93,16 @@ if __name__ == "__main__":
 
     working_dir = os.path.join(projectpath, 'simulation_output')
     start_year = 2020  # assume simulation begins on Jan 1 of this year
-    end_year = 2025 #! # general: 2029, Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
+    end_year = 2025  #! # general: 2029, Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
 
     expt_ids = {
-        'TEST_validation_phase3_wBooster': '5a34bc52-b20e-ed11-a9fb-b88303911bc1',
-        'TEST_validation_phase3_noBooster': '1ffe1a64-b40e-ed11-a9fb-b88303911bc1',
+        # 'validation_phase3_wBooster': 'ba5426a3-df0e-ed11-a9fb-b88303911bc1',
+        # 'validation_phase3_noBooster': 'b97e1e52-e30e-ed11-a9fb-b88303911bc1',
+        # 'validation_ChandramohanTrial_cleaned_1seed': 'f792b657-6b0f-ed11-a9fb-b88303911bc1'
+        # 'validation_ChandramohanTrial_p2_cleaned_3seeds': 'b0195a44-940f-ed11-a9fb-b88303911bc1'
+        # 'validation_Phase3_wBooster_p1_cleaned_4seeds': 'a5a98474-970f-ed11-a9fb-b88303911bc1'
+        # 'validation_ChandramohanTrial_p4_cleaned_3seeds': '58a579cb-a90f-ed11-a9fb-b88303911bc1'
+        'validation_Phase3_wBooster_p2_cleaned_4seeds': '0c6f322b-ad0f-ed11-a9fb-b88303911bc1'
     }
 
     sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',

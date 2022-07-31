@@ -113,11 +113,15 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
     mAb = Maternal_Antibody_Protection * mAb_vs_EIR(annual_eir)
     cb.update_params({'Maternal_Antibody_Protection': mAb})
 
-    vacc_char_sub = re.search(r'hh\d+_nn\d+', scen_row['vacc_characteristics'][0])
+    vacc_char_sub = re.search(r'hh\d+_nn\d+_bb\d+', scen_row['vacc_characteristics'][0])
     if vacc_char_sub:
         vacc_char_vals = vacc_char_sub[0]
     else:
-        vacc_char_vals = 'NA'
+        vacc_char_sub = re.search(r'hh\d+_nn\d+', scen_row['vacc_characteristics'][0])
+        if vacc_char_sub:
+            vacc_char_vals = vacc_char_sub[0]
+        else:
+            vacc_char_vals = 'NA'
     return {'seasonality': scen_row['seasonality'][0],
             'Annual EIR': annual_eir,
             'mAb': mAb,

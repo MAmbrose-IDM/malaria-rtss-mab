@@ -27,14 +27,16 @@ TESTING
 test_mAb.csv
 VALIDATION
 validation_Phase3_noBooster_cleaned.csv
+validation_Phase3_wBooster_cleaned.csv
+validation_ChandramohanTrial_cleaned.csv
 NO-INTERVENTIONS
 ___.csv
 """
-scen_csv = 'validation_Phase3_noBooster_cleaned.csv'
-expname = scen_csv.replace('.csv', '_3seed')
+scen_csv = 'validation_Phase3_wBooster_p2_cleaned.csv'
+expname = scen_csv.replace('.csv', '_4seeds')
 ds_name = 'run_col'
 
-num_seeds = 3
+num_seeds = 4
 years = 6 #! 10  # for general runs: 10, for SweepEIR: 20, for Phase3 and ChandramohanTrial: 6
 use_12_cohorts_flag = False #! True  # False  # simulate one cohort born in each month (seasonality and SMC dates updated accordingly)
 
