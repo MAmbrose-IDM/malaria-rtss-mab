@@ -14,11 +14,11 @@ projectpath = paths[2]
 # current parameter eyeballed approximate guestimates
 ##############################################################################
 # monoclonals
-mab_initial_concentration = 1100
+mab_initial_concentration = 1000  # 1100
 mab_max_efficacy = 0.95
-mab_fast_frac=0.7
-mab_k1=8
-mab_k2=100
+mab_fast_frac=0.722  # 0.7
+mab_k1=6.5  # 8
+mab_k2=95  # 100
 mab_m2 = -0.1
 mab_hh=6
 mab_nn=1.4
@@ -244,7 +244,7 @@ dev.off()
 # compare exponential and biphasic decay against mAb concentration data
 ##############################################################################
 
-make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_col='serum_concentration_ug_ml', time_col='time_weeks', max_days=7*24){
+make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_col='serum_concentration_ug_ml', time_col='time_weeks', max_days=7*24, include_exp=TRUE){
   initial_concentration = df_mg[[conc_col]][1]
   if(grepl('week', time_col)){
     time_multiplier = 7
@@ -255,9 +255,11 @@ make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_
   }
   plot(df_mg[[time_col]]*time_multiplier, df_mg[[conc_col]], ylim=c(1,1800), pch=20, log='y', xlim=c(0,max_days), bty='L', xlab='time (days)', ylab='concentration', main=title)
   xx=1:max_days
-  # simple exponential
-  concentration_through_time = initial_concentration*exp(-xx/m1)
-  lines(xx, concentration_through_time, col='blue')
+  if (include_exp){
+    # simple exponential
+    concentration_through_time = initial_concentration*exp(-xx/m1)
+    lines(xx, concentration_through_time, col='blue')
+  }
   # current PKPD with biphasic
   concentration_through_time2 =  calc_concentration_through_time(initial_concentration, fast_frac, k1, k2, xx)
   lines(xx, concentration_through_time2, type='l', ylim=c(0,initial_concentration), bty='L', xlab='time', main='Concentration through time', col='red')
@@ -269,24 +271,88 @@ k1=mab_k1
 k2=mab_k2
 m1 = 50
 
+
+ref_csvs = paste0(datapath, '/vacc_pkpd/', c('rough_dataGrab_5mgSC_Gaudinski_SF1.csv', 'rough_dataGrab_5mg_Gaudinski_SF1.csv', 'rough_dataGrab_20mg_Gaudinski_SF1.csv', 'rough_dataGrab_40mg_Gaudinski_SF1.csv'))
+ref_names = c('5mg/kg (SC)', '5mg/kg (IV)', '20mg/kg (IV)', '40mg/kg (IV)')
+ref_weights = c(3, 4, 5, 6)
 # compare roughly data-extracted values with simple exponential versus biphasic decay
 png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData.png'), width=6, height=6, res=900, units='in')
 par(mfrow=c(2,2))
-# 5mg (SC)
-df_mg = read.csv(paste0(datapath, '/vacc_pkpd/rough_dataGrab_5mgSC_Gaudinski_SF1.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='5mg (SC)')
-legend('topleft', c('data','exponential', 'biphasic'), pch=c(20,NA,NA), lwd=c(NA,1,1), col=c('black','blue','red'), bty='n')
-# 5mg
-df_mg = read.csv(paste0(datapath, '/vacc_pkpd/rough_dataGrab_5mg_Gaudinski_SF1.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='5mg (IV)')
-# 20mg
-df_mg = read.csv(paste0(datapath, '/vacc_pkpd/rough_dataGrab_20mg_Gaudinski_SF1.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='20mg (IV)')
-# 40mg
-df_mg = read.csv(paste0(datapath, '/vacc_pkpd/rough_dataGrab_40mg_Gaudinski_SF1.csv'))
-make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='40mg (IV)')
+for(rr in 1:length(ref_csvs)){
+  df_mg = read.csv(ref_csvs[rr])
+  make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title=ref_names[rr])
+  if(rr==1){
+    legend('topleft', c('data','exponential', 'biphasic'), pch=c(20,NA,NA), lwd=c(NA,1,1), col=c('black','blue','red'), bty='n')
+  }
+}
 par(mfrow=c(1,1))
 dev.off()
+
+
+# fit best pkpd parameters to mAb data
+# since I don't have actual data, just plot-grabbed values for means, use distance between model and mean datapoint, weighted by number of individuals
+get_ref_func_distance = function(df_mg, conc_col='serum_concentration_ug_ml', time_col='time_weeks', fast_frac, k1, k2, get_rel_diff=TRUE){
+  initial_concentration = df_mg[[conc_col]][1]
+  if(grepl('week', time_col)){
+    time_multiplier = 7
+  } else if(grepl('year', time_col)){
+    time_multiplier = 365
+  } else{
+    time_multiplier = 1
+  }
+  df_mg$model_val = calc_concentration_through_time(initial_concentration, fast_frac, k1, k2, df_mg[[time_col]]*time_multiplier)
+  df_mg$abs_rel_diff = abs((df_mg[[conc_col]] - df_mg$model_val) / df_mg[[conc_col]])
+  df_mg$abs_diff = abs((df_mg[[conc_col]] - df_mg$model_val))
+  if (get_rel_diff){
+    return(mean(df_mg$abs_rel_diff))
+  } else{
+    return(mean(df_mg$abs_diff))
+  }
+}
+# # iteration 1
+# fast_frac_vals = seq(0,1,length.out=15)
+# k1_vals = 10^seq(-1, 3, length.out=20)
+# k2_vals = 10^seq(-1, 3, length.out=20)
+## -> results: best_match = c(5, 15, 10), corresponding to fast_frac=0.29, k1=88.59, k2=7.85. min(diff_outputs) = 5.03
+# # iteration 2
+# fast_frac_vals = seq(0.5,1,length.out=10)
+# k1_vals = 10^seq(-1, 3, length.out=25)
+# k2_vals = 10^seq(-1, 3, length.out=25)
+## -> results: best_match = c(5, 12, 19), corresponding to fast_frac=0.722, k1=6.81, k2=100. min(diff_outputs) = 4.94
+# iteration 3
+fast_frac_vals = seq(0.5,1,length.out=10)
+k1_vals = seq(4, 10, length.out=25)
+k2_vals = seq(60, 130, length.out=25)
+## -> results: best_match = c(5,11,13), corresponding to fast_frac=0.722, k1=6.5, k2=95. min(diff_outputs) = 4.9
+diff_outputs = array(0, dim=c(length(fast_frac_vals), length(k1_vals), length(k2_vals)))
+for(i1 in 1:length(fast_frac_vals)){
+  for(i2 in 1:length(k1_vals)){
+    for(i3 in 1:length(k2_vals)){
+      for(rr in 1:length(ref_csvs)){
+        df_mg = read.csv(ref_csvs[rr])
+        cur_diff = get_ref_func_distance(df_mg, conc_col='serum_concentration_ug_ml', time_col='time_weeks', fast_frac=fast_frac_vals[i1], k1=k1_vals[i2], k2=k2_vals[i3], get_rel_diff=TRUE)
+        diff_outputs[i1,i2,i3] = diff_outputs[i1,i2,i3] + ref_weights[rr] * cur_diff
+      }
+    }
+  }
+}
+
+
+
+best_match = which(diff_outputs == min(diff_outputs), arr.ind=TRUE)[1,]
+png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData_fit.png'), width=6, height=5, res=900, units='in')
+par(mfrow=c(2,2))
+for(rr in 1:length(ref_csvs)){
+  df_mg = read.csv(ref_csvs[rr])
+  make_concentration_plot(df_mg, fast_frac=fast_frac_vals[best_match[1]], k1=k1_vals[best_match[2]], k2=k2_vals[best_match[3]], m1=NA, title=ref_names[rr],include_exp=FALSE)
+}
+dev.off()
+par(mfrow=c(1,1))
+print(best_match)
+print(min(diff_outputs))
+print(fast_frac_vals[best_match[1]])
+print(k1_vals[best_match[2]])
+print(k2_vals[best_match[3]])
 
 
 

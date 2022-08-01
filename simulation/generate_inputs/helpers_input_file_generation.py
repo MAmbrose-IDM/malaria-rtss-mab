@@ -23,14 +23,12 @@ def get_parameter_space():
         'ipti_mode': ['basic'],  # options are: 'basic', 'extended3tp', 'extended'
         # Vaccine
         'vacc_coverage': [0, 0.6, 0.8],
-        'vacc_deploy_type': ['EPI_cohort'],  # options are: 'EPI_cohort' (EPI main dose and booster dose),
-        #              'seasonal' (all doses seasonally)
-        #              'campboost' (EPI main dose and 1 campaign booster dose),
-        #              'campboost2' (EPI main dose and 2 campaign booster doses)
         'initial_hhs': [30, 40],  # [20, 40, 60],
         'initial_nns': [1.4, 2, 4],  # [1.4, 4],
         'booster_hhs': [30, 40],  # [20, 40, 60],
         'booster_nns': [1.4, 2, 4],  # [1.4, 4],
+        'initial_max_efficacy': [0.8],
+        'booster_max_efficacy': [0.6],  # 0.8
         # for RTS,S, it seems that the best parameters are hh=40, nn=2
         # Intervention targeting
         'vacc_target_group': ['random'],
@@ -39,6 +37,7 @@ def get_parameter_space():
         'cm_target_group': ['random'],  # specify whether CM is targeted toward an access group or given at random
 
         # --- additional parameters that apply to all simulations
+        'high_access_frac': 0,
         # CM, SMC, and IPTi
         'ipti_touchpoints': [61, 91, 274],
         'ipti_postprocess': True,  # if true IPTi wont be simulated but scenario csv used for postprocessing
@@ -51,17 +50,19 @@ def get_parameter_space():
         'vacc_coverage_multipliers': [1, 0],  # coverage of initial and booster doses
         'vacc_filename_description': 'default',
         'vacc_days': [365, 365*2],
+        'vacc_deploy_type': ['EPI_cohort', 'EPI_cohort'],  # options are: 'EPI_cohort' (EPI main dose and booster dose),
+        #              'seasonal' (all doses seasonally)
+        #             XX 'campboost' (EPI main dose and 1 campaign booster dose),
+        #             XX 'campboost2' (EPI main dose and 2 campaign booster doses)
         'vacc_total_time': 365 * 3,
         'initial_conc': 620,
         'initial_fast_frac': 0.88,
         'initial_k1': 46,
         'initial_k2': 583,
-        'initial_max_efficacy': 0.8,
         'booster_conc': 620,
         'booster_fast_frac': 0.88,
         'booster_k1': 46,
         'booster_k2': 583,
-        'booster_max_efficacy': 0.6,  # 0.8
     }
     return parameter_space
 
@@ -74,6 +75,8 @@ def create_intervention_inputs(param_dic, projectpath):
     vacc_coverage_multipliers = param_dic['vacc_coverage_multipliers']
     vacc_days = param_dic['vacc_days']
     vacc_deploy_type = param_dic['vacc_deploy_type']
+    if len(vacc_deploy_type) < len(vacc_days):
+        vacc_deploy_type = vacc_deploy_type + [vacc_deploy_type[len(vacc_deploy_type)-1]] * (len(vacc_days)-len(vacc_deploy_type))
     agemin_vacc = param_dic['agemin_vacc']
     agemax_vacc = param_dic['agemax_vacc']
     vacc_filename_description = param_dic['vacc_filename_description']
@@ -107,45 +110,44 @@ def create_intervention_inputs(param_dic, projectpath):
                                'CM_constant_%icoverage.csv' % (100 * float(cm))))
 
     # RTS,S - two files: one campaign and one vaccine characteristics
+    vacc_char_files = []
     for vacc in vacc_coverage:
-        if vacc == 0:
-            vacc_char_files = []
-        else:
-            vacc_coverages = vacc_coverage_multipliers
+        if vacc > 0:
+            vacc_coverages = [vacc * vv for vv in vacc_coverage_multipliers]
             booster_coverage_vacc = vacc_coverages[1]
-            vacc_coverages[0] = vacc
             num_vacc = len(vacc_coverages)
             vacc_camp_df = pd.DataFrame({
                 'DS_Name': ['all'] * num_vacc,
                 'coverage_levels': vacc_coverages,
                 'vacc_day': vacc_days,
-                'deploy_type': vacc_deploy_type * num_vacc,
+                'deploy_type': vacc_deploy_type,
                 'agemin': [agemin_vacc] * num_vacc,
                 'agemax': [agemax_vacc] * num_vacc,
                 'runcol': ['run'] * num_vacc
             })
             vacc_camp_df.to_csv(os.path.join(projectpath, 'simulation_inputs', 'vaccines',
-                                   'RTSS_campaign_%s_%icoverage_%ibooster.csv' % (
+                                   'vacc_campaign_%s_%icoverage_%ibooster.csv' % (
                                    vacc_filename_description, 100 * float(vacc), 100 * float(booster_coverage_vacc))))
-            vacc_char_files = []
+
             for ii in range(len(initial_hhs)):
                 for jj in range(len(initial_nns)):
-                    cur_filename = 'vaccines/RTSS_characteristics_%s_hh%i_nn%i_bb%i.csv' % (vacc_filename_description, initial_hhs[ii],
-                                                                              round(100*initial_nns[jj]), round(100*booster_max_efficacy))
-                    vacc_char_df = pd.DataFrame({
-                        'vacc_type': ['initial', 'booster'],
-                        'vacc_waning_type': ['pkpd']*2,
-                        'initial_concentration': [initial_conc, booster_conc],
-                        'max_efficacy': [initial_max_efficacy, booster_max_efficacy],
-                        'fast_frac': [initial_fast_frac, booster_fast_frac],
-                        'k1': [initial_k1, booster_k1],
-                        'k2': [initial_k2, booster_k2],
-                        'hh': [initial_hhs[ii], booster_hhs[ii]],
-                        'nn': [initial_nns[jj], booster_nns[jj]],
-                        'total_time': [vacc_total_time]*2,
-                    })
-                    vacc_char_df.to_csv(os.path.join(projectpath, 'simulation_inputs', cur_filename))
-                    vacc_char_files = vacc_char_files + [cur_filename]
+                    for kk in range(len(initial_max_efficacy)):
+                        cur_filename = 'vaccines/vacc_characteristics_%s_hh%i_nn%i_bb%i.csv' % (vacc_filename_description, initial_hhs[ii],
+                                                                                  round(100*initial_nns[jj]), round(100*booster_max_efficacy[kk]))
+                        vacc_char_df = pd.DataFrame({
+                            'vacc_type': ['initial', 'booster'],
+                            'vacc_waning_type': ['pkpd']*2,
+                            'initial_concentration': [initial_conc, booster_conc],
+                            'max_efficacy': [initial_max_efficacy[kk], booster_max_efficacy[kk]],
+                            'fast_frac': [initial_fast_frac, booster_fast_frac],
+                            'k1': [initial_k1, booster_k1],
+                            'k2': [initial_k2, booster_k2],
+                            'hh': [initial_hhs[ii], booster_hhs[ii]],
+                            'nn': [initial_nns[jj], booster_nns[jj]],
+                            'total_time': [vacc_total_time]*2,
+                        })
+                        vacc_char_df.to_csv(os.path.join(projectpath, 'simulation_inputs', cur_filename))
+                        vacc_char_files = vacc_char_files + [cur_filename]
 
 
     # SMC - assumes the same coverage in all rounds
@@ -173,7 +175,7 @@ def create_intervention_inputs(param_dic, projectpath):
     return vacc_char_files
 
 
-def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[], high_access_frac=None):
+def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[]):
     annual_EIR = param_dic['annual_EIR']
     seasonality = param_dic['seasonality']
     cm_coverage = param_dic['cm_coverage']
@@ -183,7 +185,8 @@ def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[
     cm_target_group = param_dic['cm_target_group']
     smc_target_group = param_dic['smc_target_group']
     vacc_target_group = param_dic['vacc_target_group']
-    booster_coverage_vacc = param_dic['vacc_coverage_multipliers'][1]
+    booster_coverage_vacc_unscaled = param_dic['vacc_coverage_multipliers'][1]
+    high_access_frac = param_dic['high_access_frac']
 
     # Create full factorial
     df_array = np.array(list(
@@ -223,8 +226,8 @@ def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[
                           df['smc_coverage']]
     df.loc[df.smc_coverage == '0', 'SMC_filename'] = ''
     df['VACC_filename'] = [os.path.join(base_scenario_filepath, 'vaccines',
-                                        'RTSS_campaign_%s_%icoverage_%ibooster.csv' % (
-                                        vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc)))
+                                        'vacc_campaign_%s_%icoverage_%ibooster.csv' % (
+                                        vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc_unscaled*yy)))
                            for yy in df['vacc_coverage']]
     df.loc[df.vacc_coverage == '0', 'VACC_filename'] = ''
 

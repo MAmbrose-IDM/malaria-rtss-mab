@@ -131,7 +131,7 @@ for (ss in 1:length(seasonality_options)) {
       dplyr::select(date, intervention_arm, clinical_cases) %>%
       rename(clinical_cases_sim = clinical_cases) # %>% mutate(df_type='simulation')
 
-    ref_dat <- fread(file.path(datapath,"data", "Chandramohan_2021", "chandramohan_2021_Fig1.csv")) %>%
+    ref_dat <- fread(file.path(datapath, "Chandramohan_2021", "chandramohan_2021_Fig1.csv")) %>%
       dplyr::select(-timepoint) %>%
       pivot_longer(cols = -c(date)) %>%
       rename(intervention_arm = name, clinical_cases_ref = value) %>%
@@ -176,8 +176,7 @@ for (ss in 1:length(seasonality_options)) {
 
     pp1 <- ggplot(data = sim_dat) +
       geom_line(data = sim_dat, aes(x = as.Date(date), y = clinical_cases_sim, col = intervention_arm), lwd = 0.5) +
-      geom_line(data = sim_dat, aes(x = as.Date(date), y = clinical_cases_sim, col = intervention_arm), lwd = 0.5) +
-      geom_point(data = ref_dat, aes(x = as.Date(date), y = clinical_cases_ref), col = "black", shape = 22) +
+      geom_point(data = ref_dat, aes(x = as.Date(date), y = clinical_cases_ref), col = "black", shape = 20, size=2.5) +
       theme_classic() +
       scale_color_manual(values = myColors) +
       ylab("Clinical cases per 1000 per month") +
@@ -185,7 +184,10 @@ for (ss in 1:length(seasonality_options)) {
       scale_x_date(labels = date_format("%B %Y"), breaks = plotted_dates) +
       theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), strip.background = element_blank(), axis.line = element_line(), axis.title.x = element_blank(), legend.position = "none") +
       facet_rep_wrap(facets = vars(intervention_arm), ncol = 1)
-
+    
+    f_save_plot(pp1, paste0('validation_plot_timeseries_', eir_cur, '_', seasonality_options[ss], '_cm', cm_cur * 100),
+                file.path(exp_filepath), width = 8, height = 6.2, units = 'in', device_format = device_format)
+    
     gg <- plot_grid(pp1, pp2, ncol = 2, rel_widths = c(1, 0.75), rel_heights = c(1, 0.8))
     gg
 

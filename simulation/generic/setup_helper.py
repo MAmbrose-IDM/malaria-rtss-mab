@@ -68,8 +68,6 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
         scen_df['vacc_coverage'] = 0
     if 'vacc_characteristics' not in scen_df.columns:
         scen_df['vacc_characteristics'] = 0
-    if 'vacc_mode' not in scen_df.columns:
-        scen_df['vacc_mode'] = 'constant'
     if 'ipti_mode' not in scen_df.columns:
         scen_df['ipti_mode'] = ''
     if 'vacc_target_group' not in scen_df.columns:
@@ -133,7 +131,6 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
             'smc_target_group': scen_row['smc_target_group'][0],
             'cm_target_group': scen_row['cm_target_group'][0],
             'frac_high_access': scen_row['frac_high_access'][0],
-            'vacc_mode': scen_row['vacc_mode'][0],
             'ipti_mode': scen_row['ipti_mode'][0],
             'vacc_char': vacc_char_vals
             }

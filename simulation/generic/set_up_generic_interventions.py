@@ -246,7 +246,7 @@ class InterventionSuite:
                 start_day = start_day0
             elif 'season' in row['deploy_type']:
                 start_day = start_day0 - round(30.4 * cohort_month_shift)
-                if start_day > 0:
+                if start_day < 0:
                     start_day = start_day + 365
             else:
                 print('WARNING: vaccine delivery name not recognized, age-based vaccination.')
