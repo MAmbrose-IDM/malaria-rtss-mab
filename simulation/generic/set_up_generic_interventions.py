@@ -246,68 +246,67 @@ class InterventionSuite:
                 start_day = start_day0
             elif 'season' in row['deploy_type']:
                 start_day = start_day0 - round(30.4 * cohort_month_shift)
-                if start_day < 0:
-                    start_day = start_day + 365
+
             else:
                 print('WARNING: vaccine delivery name not recognized, age-based vaccination.')
                 start_day = start_day0
+            if start_day > 0:
+                # Select people to receive vaccine (change their IP vaccine_selected to True)
+                """Set group of individuals to receive vaccine and change IPs accordingly"""
+                if high_access_ip_frac > 0 and vacc_target_group in ['low', 'high']:  # different coverages in different access groups
+                    if vacc_target_group == 'low':
+                        # vaccine is preferentially given to the 'low-access' group
+                        high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
+                                                                            high_access_frac=1 - high_access_ip_frac)
+                        high_low_coverages = [high_low_coverages[1], high_low_coverages[0]]
+                    else:  # vacc_target_group == 'high'
+                        high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
+                                                                            high_access_frac=high_access_ip_frac)
+                    # high-access coverage
+                    change_individual_property(cb,
+                                               start_day=start_day,
+                                               coverage=high_low_coverages[0],
+                                               target_property_name='vaccine_selected',
+                                               target_property_value='Yes',
+                                               target_group={'agemin': row[self.vacc_min_age_col],
+                                                             'agemax': row[self.vacc_max_age_col]},
+                                               ind_property_restrictions=[{'AccessToInterventions': 'higher'}],
+                                               blackout_flag=False)
+                    # low-access coverage
+                    change_individual_property(cb,
+                                               start_day=start_day,
+                                               coverage=high_low_coverages[1],
+                                               target_property_name='vaccine_selected',
+                                               target_property_value='Yes',
+                                               target_group={'agemin': row[self.vacc_min_age_col],
+                                                             'agemax': row[self.vacc_max_age_col]},
+                                               ind_property_restrictions=[{'AccessToInterventions': 'lower'}],
+                                               blackout_flag=False)
+                else:  # uniform probability of getting the vaccine
+                    if vacc_target_group != 'random':
+                        print('WARNING: name for RTS,S access-group targeting not recognized, assuming random access.')
+                    change_individual_property(cb,
+                                               start_day=start_day,
+                                               coverage=row[self.vacc_coverage_col],
+                                               target_property_name='vaccine_selected',
+                                               target_property_value='Yes',
+                                               target_group={'agemin': row[self.vacc_min_age_col],
+                                                             'agemax': row[self.vacc_max_age_col]},
+                                               blackout_flag=False)
 
-            # Select people to receive vaccine (change their IP vaccine_selected to True)
-            """Set group of individuals to receive vaccine and change IPs accordingly"""
-            if high_access_ip_frac > 0 and vacc_target_group in ['low', 'high']:  # different coverages in different access groups
-                if vacc_target_group == 'low':
-                    # vaccine is preferentially given to the 'low-access' group
-                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
-                                                                        high_access_frac=1 - high_access_ip_frac)
-                    high_low_coverages = [high_low_coverages[1], high_low_coverages[0]]
-                elif vacc_target_group == 'high':
-                    high_low_coverages = calc_high_low_access_coverages(coverage_all=row[self.vacc_coverage_col],
-                                                                        high_access_frac=high_access_ip_frac)
-                # high-access coverage
-                change_individual_property(cb,
-                                           start_day=start_day,
-                                           coverage=high_low_coverages[0],
-                                           target_property_name='vaccine_selected',
-                                           target_property_value='Yes',
-                                           target_group={'agemin': row[self.vacc_min_age_col],
-                                                         'agemax': row[self.vacc_max_age_col]},
-                                           ind_property_restrictions=[{'AccessToInterventions': 'higher'}],
-                                           blackout_flag=False)
-                # low-access coverage
-                change_individual_property(cb,
-                                           start_day=start_day,
-                                           coverage=high_low_coverages[1],
-                                           target_property_name='vaccine_selected',
-                                           target_property_value='Yes',
-                                           target_group={'agemin': row[self.vacc_min_age_col],
-                                                         'agemax': row[self.vacc_max_age_col]},
-                                           ind_property_restrictions=[{'AccessToInterventions': 'lower'}],
-                                           blackout_flag=False)
-            else:  # uniform probability of getting the vaccine
-                if vacc_target_group != 'random':
-                    print('WARNING: name for RTS,S access-group targeting not recognized, assuming random access.')
-                change_individual_property(cb,
-                                           start_day=start_day,
-                                           coverage=row[self.vacc_coverage_col],
-                                           target_property_name='vaccine_selected',
-                                           target_property_value='Yes',
-                                           target_group={'agemin': row[self.vacc_min_age_col],
-                                                         'agemax': row[self.vacc_max_age_col]},
-                                           blackout_flag=False)
-
-            # On start_day+1, create a campaign which changes IP vaccine_selected to No (allowing new vaccines to be given) and broadcasts an event that triggers a node-level intervention where the new vaccine is distributed to these same individuals. The vaccine should have Disqualifying_Properties set to {“vaccine_selected”: “Yes”}. Also change VaccineStatus IP to ReceivedVaccine.
-            vacc_broadcast_event = CampaignEvent(Start_Day=start_day+1,
-                                                 Nodeset_Config=NodeSetAll(),
-                                                 Event_Coordinator_Config=StandardInterventionDistributionEventCoordinator(
-                                                     Demographic_Coverage=1,
-                                                     Property_Restrictions=['vaccine_selected:Yes'],
-                                                     Number_Repetitions=1,
-                                                     Timesteps_Between_Repetitions=-1,
-                                                     Intervention_Config=BroadcastEvent(
-                                                         Broadcast_Event='event_add_new_vaccine',
-                                                         New_Property_Value='vaccine_selected:No'),
-                                                         ))
-            cb.add_event(vacc_broadcast_event)
+                # On start_day+1, create a campaign which changes IP vaccine_selected to No (allowing new vaccines to be given) and broadcasts an event that triggers a node-level intervention where the new vaccine is distributed to these same individuals. The vaccine should have Disqualifying_Properties set to {“vaccine_selected”: “Yes”}. Also change VaccineStatus IP to ReceivedVaccine.
+                vacc_broadcast_event = CampaignEvent(Start_Day=start_day+1,
+                                                     Nodeset_Config=NodeSetAll(),
+                                                     Event_Coordinator_Config=StandardInterventionDistributionEventCoordinator(
+                                                         Demographic_Coverage=1,
+                                                         Property_Restrictions=['vaccine_selected:Yes'],
+                                                         Number_Repetitions=1,
+                                                         Timesteps_Between_Repetitions=-1,
+                                                         Intervention_Config=BroadcastEvent(
+                                                             Broadcast_Event='event_add_new_vaccine',
+                                                             New_Property_Value='vaccine_selected:No'),
+                                                             ))
+                cb.add_event(vacc_broadcast_event)
 
         self.change_vacc_ips(cb)
         cb.update_params({
