@@ -32,6 +32,8 @@ if 'Phase3' in validation_scenario:
     param_dic.update({'booster_nns': [2]})   # [1.4, 2, 4]
     param_dic.update({'initial_max_efficacy': [0.8]})
     param_dic.update({'booster_max_efficacy': [0.8]})  # 0.6, 0.7, 0.8
+    param_dic.update({'vacc_total_time': 365*3})  # 0.6, 0.7, 0.8
+
     # create input csvs
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
 
@@ -70,6 +72,7 @@ elif 'ChandramohanTrial' in validation_scenario:
     param_dic.update({'booster_nns': [2]})
     param_dic.update({'initial_max_efficacy': [0.8]})
     param_dic.update({'booster_max_efficacy': [0.8]})   # 0.6  , 0.7, 0.75, 0.8
+    param_dic.update({'vacc_total_time': 365*3}) 
 
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
     # create coordinator csv

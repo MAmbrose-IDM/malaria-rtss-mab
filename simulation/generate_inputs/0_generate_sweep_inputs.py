@@ -14,7 +14,7 @@ sweep1 = True  # compares RTS,S and mAbs for a larger number of mAb hh values
 sweep2 = False  # compares RTS,S and mAbs for a larger number of setting EIRs
 
 # shared default parameters for sweeps
-d_seasonal_campaign_month = 7
+d_seasonal_campaign_month = 6
 d_vacc_dates = [round(d_seasonal_campaign_month*30.4+365*xx) for xx in range(0, 10)]
 d_vaccine_coverage = 0.8
 d_vacc_coverage_multipliers = [1] * len(d_vacc_dates)
@@ -41,6 +41,7 @@ r_booster_fast_frac = 0.88
 r_booster_k1 = 46
 r_booster_k2 = 583
 r_booster_max_efficacy = [0.8]
+r_vacc_total_time = 365 * 3
 
 # mAb-specific vaccine parameters
 m_initial_hhs = [40]
@@ -58,6 +59,7 @@ m_booster_fast_frac = 0.722
 m_booster_k1 = 6.5
 m_booster_k2 = 95
 m_booster_max_efficacy = [0.95]
+m_vacc_total_time = 600
 
 
 # scenario-specific parameters
@@ -98,6 +100,8 @@ if sweep1:
     param_dic.update({'booster_k1': r_booster_k1})
     param_dic.update({'booster_k2': r_booster_k2})
     param_dic.update({'booster_max_efficacy': r_booster_max_efficacy})
+    param_dic.update({'vacc_total_time': r_vacc_total_time})
+
     # create input csvs
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
     # create coordinator csv
@@ -121,6 +125,7 @@ if sweep1:
     param_dic.update({'booster_k1': m_booster_k1})
     param_dic.update({'initial_k2': m_initial_k2})
     param_dic.update({'booster_k2': m_booster_k2})
+    param_dic.update({'vacc_total_time': m_vacc_total_time})
     # create input csvs
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
     # create coordinator csv
@@ -170,6 +175,8 @@ if sweep2:
     param_dic.update({'booster_k1': r_booster_k1})
     param_dic.update({'booster_k2': r_booster_k2})
     param_dic.update({'booster_max_efficacy': r_booster_max_efficacy})
+    param_dic.update({'vacc_total_time': r_vacc_total_time})
+
     # create input csvs
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
     # create coordinator csv
@@ -193,6 +200,8 @@ if sweep2:
     param_dic.update({'booster_k1': m_booster_k1})
     param_dic.update({'initial_k2': m_initial_k2})
     param_dic.update({'booster_k2': m_booster_k2})
+    param_dic.update({'vacc_total_time': m_vacc_total_time})
+
     # create input csvs
     vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
     # create coordinator csv
