@@ -54,7 +54,7 @@ def get_parameter_space():
         #              'seasonal' (all doses seasonally)
         #             XX 'campboost' (EPI main dose and 1 campaign booster dose),
         #             XX 'campboost2' (EPI main dose and 2 campaign booster doses)
-        'vacc_total_time': 365 * 3,
+        'vacc_total_time': 600,
         'initial_conc': 620,
         'initial_fast_frac': 0.88,
         'initial_k1': 46,
@@ -132,8 +132,18 @@ def create_intervention_inputs(param_dic, projectpath):
             for ii in range(len(initial_hhs)):
                 for jj in range(len(initial_nns)):
                     for kk in range(len(initial_max_efficacy)):
-                        cur_filename = 'vaccines/vacc_characteristics_%s_hh%i_nn%i_bb%i.csv' % (vacc_filename_description, initial_hhs[ii],
-                                                                                  round(100*initial_nns[jj]), round(100*booster_max_efficacy[kk]))
+                        # cur_filename = 'vaccines/vacc_characteristics_%s_hh%i_nn%i_bb%i.csv' % (vacc_filename_description, initial_hhs[ii],
+                        #                                                           round(100*initial_nns[jj]), round(100*booster_max_efficacy[kk]))
+                        cur_filename = 'vaccines/vacc_characteristics_%s_ime%i_bme%i_ih%i_in%i_ic%i_iff%i_ik1%i_ik2%i.csv' % \
+                                       (vacc_filename_description,
+                                        round(100 * initial_max_efficacy[kk]),
+                                        round(100 * booster_max_efficacy[kk]),
+                                        round(initial_hhs[ii]),
+                                        round(100 * initial_nns[jj]),
+                                        round(initial_conc),
+                                        round(100 * initial_fast_frac),
+                                        round(100 * initial_k1),
+                                        round(100 * initial_k2),)
                         vacc_char_df = pd.DataFrame({
                             'vacc_type': ['initial', 'booster'],
                             'vacc_waning_type': ['pkpd']*2,
@@ -288,5 +298,4 @@ def remove_duplicate_scenarios(scen_csv, projectpath):
     scen_df['setting_id'] = ['HX' + str(ii) for ii in list(range(scen_df.shape[0]))]
     scen_df.set_index(keys='setting_id', inplace=True)
 
-    scen_df.to_csv(os.path.join(projectpath, 'simulation_inputs',
-                                scen_csv.replace('.csv', '_cleaned.csv')), encoding='latin')
+    scen_df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), encoding='latin')

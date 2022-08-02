@@ -111,27 +111,26 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
     mAb = Maternal_Antibody_Protection * mAb_vs_EIR(annual_eir)
     cb.update_params({'Maternal_Antibody_Protection': mAb})
 
-    vacc_char_sub = re.search(r'hh\d+_nn\d+_bb\d+', scen_row['vacc_characteristics'][0])
+    # vacc_char_sub = re.search(r'hh\d+_nn\d+_bb\d+', scen_row['vacc_characteristics'][0])
+    vacc_char_filename = scen_row['vacc_characteristics'][0]
+    vacc_char_sub = re.sub('[a-z,_]*\/*[a-z,_]*\/*[a-z,_]*\/*vacc_characteristics_', '', vacc_char_filename)
+    vacc_char_sub = re.sub('.csv', '', vacc_char_sub)
     if vacc_char_sub:
-        vacc_char_vals = vacc_char_sub[0]
+        vacc_char_vals = vacc_char_sub
     else:
-        vacc_char_sub = re.search(r'hh\d+_nn\d+', scen_row['vacc_characteristics'][0])
-        if vacc_char_sub:
-            vacc_char_vals = vacc_char_sub[0]
-        else:
-            vacc_char_vals = 'NA'
+        vacc_char_vals = 'NA'
     return {'seasonality': scen_row['seasonality'][0],
             'Annual EIR': annual_eir,
-            'mAb': mAb,
+            # 'mAb': mAb,
             'cm_coverage': scen_row['cm_coverage'][0],
             'vacc_coverage': scen_row['vacc_coverage'][0],
             'smc_coverage': scen_row['smc_coverage'][0],
-            'ipti_coverage': scen_row['ipti_coverage'][0],
+            # 'ipti_coverage': scen_row['ipti_coverage'][0],
             'vacc_target_group': scen_row['vacc_target_group'][0],
             'smc_target_group': scen_row['smc_target_group'][0],
             'cm_target_group': scen_row['cm_target_group'][0],
             'frac_high_access': scen_row['frac_high_access'][0],
-            'ipti_mode': scen_row['ipti_mode'][0],
+            # 'ipti_mode': scen_row['ipti_mode'][0],
             'vacc_char': vacc_char_vals
             }
 
