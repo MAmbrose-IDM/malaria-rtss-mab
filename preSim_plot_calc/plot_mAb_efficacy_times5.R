@@ -453,7 +453,7 @@ fast_frac=0.7
 k1=8
 k2=100
 nns = c(2)
-hhs = c(10, 20, 40)  # c(5, 10, 20, 40, 60)
+hhs = c(5, 10, 20, 40, 60)  # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
 colors = viridis(length(hhs))
 png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams.png'), width=6, height=5, res=900, units='in')
 plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
@@ -467,6 +467,9 @@ for(i1 in 1:length(initial_concentrations)){
     }
   }
 }
+lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+      col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
+
 legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
 legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
 dev.off()
