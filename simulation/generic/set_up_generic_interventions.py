@@ -89,6 +89,7 @@ class InterventionSuite:
     smc_agemin = 0.25
     smc_agemax = 5
     smc_max_age_col = 'max_age'
+    smc_min_age_col = 'min_age'
     smc_TAT_col = 'TAT'
     smc_leakage = True
     smc_leak_agemax = 10
@@ -441,9 +442,9 @@ class InterventionSuite:
         agemax = self.smc_agemax
         for r, row in df.iterrows():
             if self.smc_max_age_col in smc_df.columns.values:
-                max_smc_age = row[self.smc_max_age_col]
-            else:
-                max_smc_age = 5
+                agemax = row[self.smc_max_age_col]
+            if self.smc_min_age_col in smc_df.columns.values:
+                agemin = row[self.smc_min_age_col]
             if self.smc_TAT_col in smc_df.columns.values:
                 TAT = row[self.smc_TAT_col]
             else:

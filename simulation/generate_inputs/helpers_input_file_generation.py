@@ -42,8 +42,10 @@ def get_parameter_space():
         'ipti_touchpoints': [61, 91, 274],
         'ipti_postprocess': True,  # if true IPTi wont be simulated but scenario csv used for postprocessing
         'num_smc_rounds': 4,
-        'smc_start_month': 7,
+        'smc_start_day': round((6.5-1)*30.4),
         'num_repeated_years': 0,  # number of repeated years for SMC
+        'agemin_smc': 0.25,
+        'agemax_smc': 5,
         # Vaccine
         'agemin_vacc': 0.25,
         'agemax_vacc': 5,
@@ -95,9 +97,11 @@ def create_intervention_inputs(param_dic, projectpath):
     initial_k2 = param_dic['initial_k2']
     booster_k2 = param_dic['booster_k2']
     vacc_total_time = param_dic['vacc_total_time']
-    smc_start_month = param_dic['smc_start_month']
+    smc_start_day = param_dic['smc_start_day']
     num_smc_rounds = param_dic['num_smc_rounds']
     num_repeated_years = param_dic['num_repeated_years']
+    agemax_smc = param_dic['agemax_smc']
+    agemin_smc = param_dic['agemin_smc']
 
     # CM
     for cm in cm_coverage:
@@ -165,8 +169,8 @@ def create_intervention_inputs(param_dic, projectpath):
         if smc == 0:
             df_all_years = pd.DataFrame()
         else:
-            df_r1 = pd.DataFrame({'round': [1], 'coverage': [smc], 'max_age': [5],
-                                  'simday': [(smc_start_month-1)*30], 'duration': [-1], 'run_col': ['run']})
+            df_r1 = pd.DataFrame({'round': [1], 'coverage': [smc], 'max_age': [agemax_smc], 'min_age': [agemin_smc],
+                                  'simday': [smc_start_day], 'duration': [-1], 'run_col': ['run']})
             df_base_year = df_r1.copy()
             for rr in range(num_smc_rounds-1):
                 df_new_round = df_r1.copy()
@@ -185,7 +189,7 @@ def create_intervention_inputs(param_dic, projectpath):
     return vacc_char_files
 
 
-def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[]):
+def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=['none']):
     annual_EIR = param_dic['annual_EIR']
     seasonality = param_dic['seasonality']
     cm_coverage = param_dic['cm_coverage']
@@ -197,6 +201,9 @@ def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[
     vacc_target_group = param_dic['vacc_target_group']
     booster_coverage_vacc_unscaled = param_dic['vacc_coverage_multipliers'][1]
     high_access_frac = param_dic['high_access_frac']
+
+    if len(vacc_char_files) < 1:
+        vacc_char_files = ['none']
 
     # Create full factorial
     df_array = np.array(list(
@@ -237,7 +244,7 @@ def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[
     df.loc[df.smc_coverage == '0', 'SMC_filename'] = ''
     df['VACC_filename'] = [os.path.join(base_scenario_filepath, 'vaccines',
                                         'vacc_campaign_%s_%icoverage_%ibooster.csv' % (
-                                        vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc_unscaled*yy)))
+                                        vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc_unscaled)*float(yy)))
                            for yy in df['vacc_coverage']]
     df.loc[df.vacc_coverage == '0', 'VACC_filename'] = ''
 
