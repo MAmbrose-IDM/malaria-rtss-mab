@@ -18,14 +18,16 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-booster_string = 'no.boost'  #'no.boost' or 'boost'
+booster_string = 'boost'  #'no.boost' or 'boost'
 if(booster_string == 'boost'){
-  exp_name1 = 'TEST_validation_phase3_wBooster_firstParamSet'; bb2='_bb80' # NA
-  exp_name2 = 'validation_phase3_wBooster'; bb1 = '_bb60'  # TEST_validation_phase3_wBooster
+  exp_name1 = 'TEST_validation_phase3_wBooster_firstParamSet'; bb1='_bb80' # NA
+  exp_name2 = 'validation_phase3_wBooster'; bb2 = '_bb60'  # (was previously mislabeled _bb80
   exp_name3 = 'validation_Phase3_wBooster_p1_cleaned_4seeds'; bb3=''
   exp_name4 = 'validation_Phase3_wBooster_p2_cleaned_4seeds'; bb4=''
   exp_names = c(exp_name1, exp_name2, exp_name3, exp_name4)
   bbs = c(bb1, bb2, bb3, bb4)
+  # exp_names = c(exp_name2, exp_name3, exp_name4)
+  # bbs = c(bb2, bb3, bb4)
 } else {
   exp_name1 = 'TEST_validation_phase3_noBooster_firstParamSet'; bb2=''  # NA
   exp_name2 = 'validation_phase3_noBooster'; bb1=''
@@ -139,7 +141,8 @@ ref_df_subset$PE2l = 1 - (ref_df_subset$nT.LL.1/ref_df_subset$T.1) / (ref_df_sub
 ref_df_subset$PE2u = 1 - (ref_df_subset$nT.UL.1/ref_df_subset$T.1) / (ref_df_subset$nT.UL.2/ref_df_subset$T.2)
 
 # get rid of values where sample sizes are extremely small
-ref_df_subset$size_too_small = ref_df_subset$n.1<5 & ref_df_subset$n.2<5
+size_limit = 10
+ref_df_subset$size_too_small = ref_df_subset$n.1<size_limit & ref_df_subset$n.2<size_limit
 ref_df_subset$PE[ref_df_subset$size_too_small] = NA
 ref_df_subset$PE2[ref_df_subset$size_too_small] = NA
 ref_df_subset$PE2l[ref_df_subset$size_too_small] = NA
@@ -197,13 +200,13 @@ for(vc in 1:length(vacc_char_sets)){
 }
 print(paste0('Our vaccine winner is: ', vacc_char_sets[rough_probs == max(rough_probs)]))
 df = data.frame('vacc_char'=vacc_char_sets, 'rough_loglik'=rough_probs)
-write.csv(df, paste0(exp_filepath, '/compare_vacc_char_sets.csv'))
+write.csv(df, paste0(exp_filepath, '/compare_vacc_char_sets_sizeLimit', size_limit,'.csv'))
 
 
 
 # plot the selected values from Phase 3 and Chandramohan
 if(booster_string == 'boost'){
-  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200_bb60', 'hh40_nn200_bb80'),]
+  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200_bb60', 'hh40_nn200_bb70', 'hh40_nn200_bb80'),]
 } else{
   comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200'),]
 }
@@ -216,6 +219,6 @@ gg2 = ggplot(data = comparison_df3) +
   xlab('time since third dose (years)') +
   ylim(-0.5, 1) + 
   facet_wrap(facets='site',nrow=3)
-f_save_plot(gg2, paste0('PE2_comparison_SelectParams'),
+f_save_plot(gg2, paste0('PE2_comparison_SelectParams_sizeLimit', size_limit),
             file.path(exp_filepath), width = 12, height = 8, units = 'in', device_format = device_format)
 
