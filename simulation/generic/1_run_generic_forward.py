@@ -33,8 +33,8 @@ NO-INTERVENTIONS
 ___.csv
 """
 num_seeds = 1
-scen_csv = 'sweep1_cleaned.csv'
-expname = scen_csv.replace('.csv', '_%iseeds_wCohort' % num_seeds)
+scen_csv = 'sweep3a.csv'
+expname = scen_csv.replace('.csv', '_seeds%i' % num_seeds)
 ds_name = 'run_col'
 
 years = 8  # for general runs: 10, for Phase3 and ChandramohanTrial: 6

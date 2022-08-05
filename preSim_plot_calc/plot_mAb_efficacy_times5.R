@@ -425,11 +425,11 @@ fast_frac=mab_fast_frac
 k1=mab_k1
 k2=mab_k2
 nns = c(1.4,2,4)
-hhs = c(6,30)
+hhs = c(1, 6,30)
 color_set=list(c(rgb(1,0,0), rgb(0,0,1), rgb(0.3,0.3,0.3)),c(rgb(1,0.5,0.5), rgb(0.5,0.5,1), rgb(0.7,0.7,0.7)))
 lwds = c(1,2)
 ltys=c(1,2, 3)
-png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_OldParams.png'), width=6, height=5, res=900, units='in')
+# png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_OldParams.png'), width=6, height=5, res=900, units='in')
 plot(NA, xlim=c(0,max(xx)), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
 for(i1 in 1:length(initial_concentrations)){
   for(i2 in 1:length(max_efficacies)){
@@ -441,7 +441,7 @@ for(i1 in 1:length(initial_concentrations)){
     }
   }
 }
-dev.off()
+# dev.off()
 
 
 # parameter sets currently (7/29/2022) planned for Sept GR analyses
@@ -453,9 +453,9 @@ fast_frac=0.7
 k1=8
 k2=100
 nns = c(2)
-hhs = c(5, 10, 20, 40, 60)  # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
+hhs = c(10, 20, 40)   # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
 colors = viridis(length(hhs))
-png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams.png'), width=6, height=5, res=900, units='in')
+png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams2.png'), width=6, height=5, res=900, units='in')
 plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
 for(i1 in 1:length(initial_concentrations)){
   for(i2 in 1:length(max_efficacies)){
@@ -469,12 +469,66 @@ for(i1 in 1:length(initial_concentrations)){
 }
 lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
       col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
+legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
+legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
+dev.off()
 
+# parameter sets currently (7/29/2022) planned for Sept GR analyses
+initial_concentrations=c(1000)
+max_efficacies=c(0.8, 0.9, 0.95)
+ltys = c(3, 2, 1)
+fast_frac=0.7
+k1=8
+k2=100
+nns = c(0.5, 2)
+lwds=c(1, 2)
+hhs = c(10, 20, 40)   # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
+colors = viridis(length(hhs))
+png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_otherPossParams.png'), width=6, height=5, res=900, units='in')
+plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
+for(i1 in 1:length(initial_concentrations)){
+  for(i2 in 1:length(max_efficacies)){
+    for(i3 in 1:length(nns)){
+      for(i4 in 1:length(hhs)){
+        lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, nn=nns[i3], hh=hhs[i4], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+              col=colors[i4], lwd=lwds[i3], lty=ltys[i2])
+      }
+    }
+  }
+}
+lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+      col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
 legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
 legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
 dev.off()
 
 
+
+initial_concentrations=c(100, 1000, 2000)
+max_efficacies=c(0.8)
+fast_frac=mab_fast_frac
+k1=mab_k1
+k2=mab_k2
+nns = c(0.5, 2, 4, 8)
+hhs = c(0.1, 10, 20, 40)
+color_set=list(c(rgb(1,0,0), rgb(0,0,1), rgb(0.3,0.3,0.3)),c(rgb(1,0.5,0.5), rgb(0.5,0.5,1), rgb(0.7,0.7,0.7)))
+lwds = c(1,2)
+ltys=c(1,2, 3)
+# png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_OldParams.png'), width=6, height=5, res=900, units='in')
+plot(NA, xlim=c(0,max(xx)), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
+for(i1 in 1:length(initial_concentrations)){
+  for(i2 in 1:length(max_efficacies)){
+    for(i3 in 1:length(nns)){
+      for(i4 in 1:length(hhs)){
+        lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, nn=nns[i3], hh=hhs[i4], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+              # col=color_set[[i4]][i3], lwd=lwds[i2], lty=ltys[i1])
+              col='lightblue', lwd=lwds[i2], lty=ltys[i1])
+      }
+    }
+  }
+}
+lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+      col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
 
 
 ##############################################################################
@@ -529,6 +583,45 @@ for(booster_day in booster_days){
   # what is an alternative way of doing efficacy through time for use in EMOD (i.e., without using concentrations)?
   # option 1) add new efficacy on top of old
   eff_conc_no_boost = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, m2=m2, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
+  eff_conc_with_boost = eff_conc_no_boost
+  eff_conc_with_boost[booster_day:length(eff_conc_with_boost)] = eff_conc_with_boost[booster_day:length(eff_conc_with_boost)] + eff_conc_no_boost[1:(length(eff_conc_with_boost) - booster_day + 1)]
+  eff_conc_with_boost[eff_conc_with_boost>1]=1
+  # version removing previous vaccine and applying new one
+  eff_conc_with_boost2 = eff_conc_no_boost
+  eff_conc_with_boost2[booster_day:length(eff_conc_with_boost)] = eff_conc_no_boost[1:(length(eff_conc_with_boost) - booster_day + 1)]
+  
+  plot(xx, eff_conc_pkpd[[1]], type='l', col='black', ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main=paste0('Booster day ', booster_day), lwd=2)
+  lines(xx, eff_conc_with_boost, col='blue')
+  lines(xx, eff_conc_with_boost2, col='red')
+  
+}
+legend('topright', c('PKPD', 'additive', 'remove old'), lwd=c(2,1,1), col=c('black', 'blue', 'red'), bty='n')
+dev.off()
+par(mfrow=c(1,1))
+
+
+
+
+
+# For RTS,S parameters: compare alternative approach of just adding efficacies against 'correct' PKPD approach of adding concentrations
+png(filename=paste0(projectpath, '/nonSimFigures/compare_conc_eff_booster_approaches_RTSS_', '_maxEff', round(max_efficacy*100), '.png'), width=2.5*length(booster_days), height=3, res=900, units='in')
+par(mfrow=c(1,3))
+# from RTSS
+xx=1:(365*3)
+fast_frac = rtss4_fast_frac
+k1=rtss4_k1
+k2=rtss4_k2
+max_efficacy=rtss4_max_efficacy
+initial_concentration=rtss4_initial_concentration
+initial_concentration_booster = rtss4_initial_concentration/2
+hh=rtss4_hh
+nn=rtss4_nn
+booster_days = c(182, 365, 365*2)
+for(booster_day in booster_days){
+  eff_conc_pkpd = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, xx=xx, booster_day=booster_day, create_plot_panel=FALSE)
+  # what is an alternative way of doing efficacy through time for use in EMOD (i.e., without using concentrations)?
+  # option 1) add new efficacy on top of old
+  eff_conc_no_boost = calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=max_efficacy, fast_frac=fast_frac, k1=k1, k2=k2, hh=hh, nn=nn, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]]
   eff_conc_with_boost = eff_conc_no_boost
   eff_conc_with_boost[booster_day:length(eff_conc_with_boost)] = eff_conc_with_boost[booster_day:length(eff_conc_with_boost)] + eff_conc_no_boost[1:(length(eff_conc_with_boost) - booster_day + 1)]
   eff_conc_with_boost[eff_conc_with_boost>1]=1

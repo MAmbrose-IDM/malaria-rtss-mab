@@ -33,8 +33,8 @@ class monthlyTreatedCasesAnalyzer(BaseAnalyzer):
         self.end_year = end_year
 
     # added to bypass failed cases
-    def filter(self, simulation):
-        return simulation.status.name == 'Succeeded'
+    # def filter(self, simulation):
+    #     return simulation.status.name == 'Succeeded'
 
     def select_simulation_data(self, data, simulation):
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     working_dir = os.path.join(projectpath, 'simulation_output')
     start_year = 2020  # assume simulation begins on Jan 1 of this year
-    end_year = 2025  #! # general: 2029, Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
+    end_year = 2027  #! # general: 2029, Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
 
     expt_ids = {
         # 'validation_phase3_wBooster': 'ba5426a3-df0e-ed11-a9fb-b88303911bc1',
@@ -102,12 +102,16 @@ if __name__ == "__main__":
         # 'validation_ChandramohanTrial_p2_cleaned_3seeds': 'b0195a44-940f-ed11-a9fb-b88303911bc1'
         # 'validation_Phase3_wBooster_p1_cleaned_4seeds': 'a5a98474-970f-ed11-a9fb-b88303911bc1'
         # 'validation_ChandramohanTrial_p4_cleaned_3seeds': '58a579cb-a90f-ed11-a9fb-b88303911bc1'
-        'validation_Phase3_wBooster_p2_cleaned_4seeds': '0c6f322b-ad0f-ed11-a9fb-b88303911bc1'
+        # 'validation_Phase3_wBooster_p2_cleaned_4seeds': '0c6f322b-ad0f-ed11-a9fb-b88303911bc1'
+        # 'sweep1_seeds1': 'a5e01f2d-c312-ed11-a9fb-b88303911bc1',
+        # 'sweep2_seeds1': '450d6876-c312-ed11-a9fb-b88303911bc1'
+        # 'sweep1_cleaned_1seeds_wCohort': '16bbe499-9a12-ed11-a9fb-b88303911bc1'
+        'sweep3a_seeds1': 'de6c4ab2-5413-ed11-a9fb-b88303911bc1'
     }
 
     sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',
-                       'cm_coverage', 'smc_coverage', 'vacc_coverage', 'vacc_char', 'vacc_mode',
-                       'cm_target_group', 'smc_target_group', 'vacc_target_group']
+                       'cm_coverage', 'smc_coverage', 'vacc_coverage', 'vacc_char',
+                       'cm_target_group', 'smc_target_group', 'vacc_target_group', 'frac_high_access']
     report_count_channels = ['Received_Treatment', 'Received_Severe_Treatment', 'Received_NMF_Treatment']
     for expname, expid in expt_ids.items():
         print('running expt %s' % expname)

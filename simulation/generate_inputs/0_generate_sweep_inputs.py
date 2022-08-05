@@ -10,12 +10,13 @@ datapath, projectpath = load_box_paths()
 base_scenario_filepath = ''  # os.path.join('scenario_files', 'generic')
 
 # set which validation scenario to generate files for
-sweep1 = True  # compares RTS,S and mAbs for a larger number of mAb hh values
+sweep1 = False  # compares RTS,S and mAbs for a larger number of mAb hh values
 sweep2 = False  # compares RTS,S and mAbs for a larger number of setting EIRs
+sweep3a = True  # compare SMC and mAbs, separately - SMC-only sweep to match previous mAb sweep
 
 # shared default parameters for sweeps
-d_seasonal_campaign_month = 6
-d_vacc_dates = [round(d_seasonal_campaign_month*30.4+365*xx) for xx in range(0, 10)]
+d_seasonal_campaign_month = 6.75
+d_vacc_dates = [round((d_seasonal_campaign_month-1)*30.4 + 365*xx) for xx in range(0, 10)]
 d_vaccine_coverage = 0.8
 d_vacc_coverage_multipliers = [1] * len(d_vacc_dates)
 d_cm_coverage = 0.6
@@ -213,3 +214,37 @@ if sweep2:
     scen_csv = 'coordinator_files/%s.csv' % validation_scenario
     df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), index=False)
     remove_duplicate_scenarios(scen_csv, projectpath=projectpath)
+
+if sweep3a:
+    validation_scenario = 'sweep3a'
+    param_dic = get_parameter_space()
+    # update dictionary for this scenario
+    # setting
+    param_dic.update({'annual_EIR': [30]})
+    param_dic.update({'seasonality': ['constant', 'high_unimodal']})
+    # intervention campaigns
+    param_dic.update({'vacc_days': []})
+    param_dic.update({'vacc_deploy_type': []})
+    param_dic.update({'vacc_coverage': [0]})
+    param_dic.update({'vacc_coverage_multipliers': [0, 0]})
+    param_dic.update({'cm_coverage': [d_cm_coverage]})
+    param_dic.update({'smc_coverage': [0, d_vaccine_coverage]})
+    param_dic.update({'smc_start_day': d_vacc_dates[0]})
+    param_dic.update({'num_repeated_years': 10})  # for SMC
+    param_dic.update({'num_smc_rounds': 4})
+    param_dic.update({'vacc_target_group': d_vacc_target_group})
+    param_dic.update({'cm_target_group': d_cm_target_group})
+    param_dic.update({'smc_target_group': d_smc_target_group})
+    param_dic.update({'high_access_frac': d_high_access_frac})
+
+    # create input csvs
+    vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
+    # create coordinator csv
+    df = create_coordinator_csvs(param_dic=param_dic, base_scenario_filepath=base_scenario_filepath,
+                                 vacc_char_files=vacc_char_files)
+
+    # === combine and save dataframes === #
+    scen_csv = 'coordinator_files/%s.csv' % validation_scenario
+    df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), index=False)
+    remove_duplicate_scenarios(scen_csv, projectpath=projectpath)
+

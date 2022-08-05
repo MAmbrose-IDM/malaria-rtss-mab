@@ -8,6 +8,7 @@ library(ggplot2)
 library(scales)
 library(lemon)
 library(reshape2)
+library(tidyr)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -22,7 +23,7 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-exp_filepath = file.path(projectpath, 'simulation_output/validation_ChandramohanTrial_p4_cleaned_3seeds')  # validation_ChandramohanTrial_cleaned_1seed
+exp_filepath = file.path(projectpath, 'simulation_output/validation_ChandramohanTrial_p2_cleaned_3seeds')  # validation_ChandramohanTrial_cleaned_1seed
 cases_filepath = file.path(exp_filepath, 'All_Age_monthly_Cases.csv')
 cases_df = read.csv(cases_filepath)
 eir_cur = 6  # 6, 10, 15
@@ -113,6 +114,28 @@ for (ss in 1:length(seasonality_options)) {
 
   print(gg)
 
+  if (FALSE){
+    cases_df_cur = cases_df_subset[intersect(intersect(which(cases_df_subset$seasonality == seasonality_options[ss]),
+                                                       which(cases_df_subset$Annual.EIR == eir_cur)),
+                                             which(cases_df_subset$cm_coverage == cm_cur)),]
+    cases_df_cur = cases_df_cur[as.character(cases_df_cur$intervention_arm) %in% c('Vaccine Alone', 'No intervention'),]
+    gg = ggplot(cases_df_cur, aes(x = date, y = clinical_cases, col = intervention_arm)) +
+      geom_point() +
+      geom_line(lwd = 0.5, alpha = 0.2) +
+      colScale +
+      theme_classic() +
+      ylab('Clinical cases per 1000 per month') +
+      # ylim(0,175)+
+      # scale_x_continuous(breaks=18) +
+      scale_x_date(labels = date_format("%B %Y"), breaks = plotted_dates) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), strip.background = element_blank(), axis.line = element_line(), axis.title.x = element_blank(), legend.position = 'none') +
+      facet_rep_wrap(facets = vars(intervention_arm), ncol = 1) #, scales='free_y')
+    # facet_wrap(facets=vars(intervention_arm), ncol=1, scales = "free_x")
+    f_save_plot(gg, paste0('timeseries_compare_with_without_rtss_EIR',eir_cur, '_', seasonality_options[ss], '_cm', cm_cur * 100),
+                file.path(exp_filepath), width = 6.4, height = 9.5, units = 'in', device_format = device_format)
+    
+  }
+  
   if (TIMESERIES_WITH_SCATTER) {
     cases_df_cur <- cases_df_subset[intersect(which(cases_df_subset$seasonality == seasonality_options[ss]), which(cases_df_subset$Annual.EIR == eir_cur)),]
     cases_df_cur <- cases_df_cur[as.character(cases_df_cur$intervention_arm) != "No intervention",]
