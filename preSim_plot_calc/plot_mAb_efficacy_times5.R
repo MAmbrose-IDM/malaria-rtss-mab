@@ -531,6 +531,36 @@ lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentra
       col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
 
 
+# parameter sets currently (8/15/2022) planned for Sept GR analyses
+initial_concentrations=c(1000)
+lwds=c(1)
+max_efficacies=c(0.8, 0.9, 0.95)
+ltys = c(3, 2, 1)
+fast_frac=0.7
+k1=8
+k2=100
+nns = c(2)
+hhs = c(5, 10, 20, 40)   # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
+colors = viridis(length(hhs))
+png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams4.png'), width=6, height=5, res=900, units='in')
+plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
+for(i1 in 1:length(initial_concentrations)){
+  for(i2 in 1:length(max_efficacies)){
+    for(i3 in 1:length(nns)){
+      for(i4 in 1:length(hhs)){
+        lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=max_efficacies[i2], fast_frac=fast_frac, k1=k1, k2=k2, nn=nns[i3], hh=hhs[i4], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+              col=colors[i4], lwd=lwds[i1], lty=ltys[i2])
+      }
+    }
+  }
+}
+lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+      col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
+legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
+legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
+dev.off()
+
+
 ##############################################################################
 # booster doses
 ##############################################################################

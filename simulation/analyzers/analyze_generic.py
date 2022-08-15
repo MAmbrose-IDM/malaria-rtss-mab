@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     working_dir = os.path.join(projectpath, 'simulation_output')
     start_year = 2020  # assume simulation begins on Jan 1 of this year
-    end_year = 2027  #! # general: 2029, Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
+    end_year = 2027  #! # general: 2027 (old: 2029), Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
 
     expt_ids = {
         # 'validation_phase3_wBooster': 'ba5426a3-df0e-ed11-a9fb-b88303911bc1',
@@ -106,7 +106,8 @@ if __name__ == "__main__":
         # 'sweep1_seeds1': 'a5e01f2d-c312-ed11-a9fb-b88303911bc1',
         # 'sweep2_seeds1': '450d6876-c312-ed11-a9fb-b88303911bc1'
         # 'sweep1_cleaned_1seeds_wCohort': '16bbe499-9a12-ed11-a9fb-b88303911bc1'
-        'sweep3a_seeds1': 'de6c4ab2-5413-ed11-a9fb-b88303911bc1'
+        # 'sweep3a_seeds1': 'de6c4ab2-5413-ed11-a9fb-b88303911bc1'
+        'sweep4_seeds1': 'f76cd313-ce19-ed11-a9fb-b88303911bc1'
     }
 
     sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',

@@ -12,7 +12,8 @@ base_scenario_filepath = ''  # os.path.join('scenario_files', 'generic')
 # set which validation scenario to generate files for
 sweep1 = False  # compares RTS,S and mAbs for a larger number of mAb hh values
 sweep2 = False  # compares RTS,S and mAbs for a larger number of setting EIRs
-sweep3a = True  # compare SMC and mAbs, separately - SMC-only sweep to match previous mAb sweep
+sweep3a = False  # compare SMC and mAbs, separately - SMC-only sweep to match previous mAb sweep
+sweep4 = True
 
 # shared default parameters for sweeps
 d_seasonal_campaign_month = 6.75
@@ -248,3 +249,102 @@ if sweep3a:
     df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), index=False)
     remove_duplicate_scenarios(scen_csv, projectpath=projectpath)
 
+
+if sweep4:
+    validation_scenario = 'sweep4'
+    param_dic = get_parameter_space()
+    # update dictionary for this scenario
+    # setting
+    param_dic.update({'annual_EIR': [5, 10, 30]})
+    param_dic.update({'seasonality': ['constant', 'moderate_unimodal', 'high_unimodal']})
+    # intervention campaigns
+    param_dic.update({'vacc_days': d_vacc_dates})
+    param_dic.update({'vacc_deploy_type': ['seasonal'] * len(d_vacc_dates)})
+    param_dic.update({'vacc_coverage': [0, d_vaccine_coverage]})
+    param_dic.update({'vacc_coverage_multipliers': [1] * len(d_vacc_dates)})
+    param_dic.update({'cm_coverage': [d_cm_coverage]})
+    param_dic.update({'smc_coverage': [0]})
+    param_dic.update({'num_repeated_years': 0})  # for SMC
+    param_dic.update({'vacc_target_group': d_vacc_target_group})
+    param_dic.update({'cm_target_group': d_cm_target_group})
+    param_dic.update({'smc_target_group': d_smc_target_group})
+    param_dic.update({'high_access_frac': d_high_access_frac})
+
+    # === RTS,S and no-vaccine scenarios === #
+    # vaccine pk/pd
+    param_dic.update({'vacc_filename_description': r_vacc_filename_description})
+    param_dic.update({'initial_hhs': r_initial_hhs})
+    param_dic.update({'initial_nns': r_initial_nns})
+    param_dic.update({'booster_hhs': r_booster_hhs})
+    param_dic.update({'booster_nns': r_booster_nns})
+    param_dic.update({'initial_conc': r_initial_conc})
+    param_dic.update({'initial_fast_frac': r_initial_fast_frac})
+    param_dic.update({'initial_k1': r_initial_k1})
+    param_dic.update({'initial_k2': r_initial_k2})
+    param_dic.update({'initial_max_efficacy': r_initial_max_efficacy})
+    param_dic.update({'booster_conc': r_booster_conc})
+    param_dic.update({'booster_fast_frac': r_booster_fast_frac})
+    param_dic.update({'booster_k1': r_booster_k1})
+    param_dic.update({'booster_k2': r_booster_k2})
+    param_dic.update({'booster_max_efficacy': r_booster_max_efficacy})
+    param_dic.update({'vacc_total_time': r_vacc_total_time})
+
+    # create input csvs
+    vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
+    # create coordinator csv
+    df_rtss = create_coordinator_csvs(param_dic=param_dic, base_scenario_filepath=base_scenario_filepath,
+                                      vacc_char_files=vacc_char_files)
+
+    # === mAb scenarios === #
+    # vaccine pk/pd
+    param_dic.update({'vacc_filename_description': m_vacc_filename_description})
+    param_dic.update({'initial_max_efficacy': [0.8, 0.9, 0.95]})
+    param_dic.update({'booster_max_efficacy': [0.8, 0.9, 0.95]})
+    param_dic.update({'initial_hhs': [5, 10, 20, 40]})
+    param_dic.update({'booster_hhs': [5, 10, 20, 40]})
+    param_dic.update({'initial_nns': m_initial_nns})
+    param_dic.update({'booster_nns': m_booster_nns})
+    param_dic.update({'initial_conc': m_initial_conc})
+    param_dic.update({'booster_conc': m_booster_conc})
+    param_dic.update({'initial_fast_frac': m_initial_fast_frac})
+    param_dic.update({'booster_fast_frac': m_booster_fast_frac})
+    param_dic.update({'initial_k1': m_initial_k1})
+    param_dic.update({'booster_k1': m_booster_k1})
+    param_dic.update({'initial_k2': m_initial_k2})
+    param_dic.update({'booster_k2': m_booster_k2})
+    param_dic.update({'vacc_total_time': m_vacc_total_time})
+    # create input csvs
+    vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
+    # create coordinator csv
+    df_mab = create_coordinator_csvs(param_dic=param_dic, base_scenario_filepath=base_scenario_filepath,
+                                 vacc_char_files=vacc_char_files)
+
+    # === SMC scenarios === #
+    # intervention campaigns
+    param_dic.update({'vacc_filename_description': 'None'})
+    param_dic.update({'vacc_days': []})
+    param_dic.update({'vacc_deploy_type': []})
+    param_dic.update({'vacc_coverage': [0]})
+    param_dic.update({'vacc_coverage_multipliers': [0, 0]})
+    param_dic.update({'cm_coverage': [d_cm_coverage]})
+    param_dic.update({'smc_coverage': [0, d_vaccine_coverage]})
+    param_dic.update({'smc_start_day': d_vacc_dates[0]})
+    param_dic.update({'num_repeated_years': 10})  # for SMC
+    param_dic.update({'num_smc_rounds': 4})
+    param_dic.update({'vacc_target_group': d_vacc_target_group})
+    param_dic.update({'cm_target_group': d_cm_target_group})
+    param_dic.update({'smc_target_group': d_smc_target_group})
+    param_dic.update({'high_access_frac': d_high_access_frac})
+
+    # create input csvs
+    vacc_char_files = create_intervention_inputs(param_dic=param_dic, projectpath=projectpath)
+    # create coordinator csv
+    df_smc = create_coordinator_csvs(param_dic=param_dic, base_scenario_filepath=base_scenario_filepath,
+                                 vacc_char_files=vacc_char_files)
+
+    # === combine and save dataframes === #
+    df = combine_input_files(scen_df1=df_rtss, scen_df2=df_mab)
+    df = combine_input_files(scen_df1=df, scen_df2=df_smc)
+    scen_csv = 'coordinator_files/%s.csv' % validation_scenario
+    df.to_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv), index=False)
+    remove_duplicate_scenarios(scen_csv, projectpath=projectpath)
