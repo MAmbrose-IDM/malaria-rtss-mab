@@ -61,6 +61,30 @@ f_getCustomTheme <- function(fontscl = 1) {
   return(customTheme)
 }
 
+# specify colors for plotted interventions (based on hh for mAbs and specified manually otherwise)
+get_intervention_colors = function(level_name = 'smc_rtss_mab', rtss_col=rgb(0.5,0.5,0.5), smc_col='#924900', none_col='black', hh_vals=c(5, 10, 20, 40, 60, 80)){
+  # Note: in ggplot, use:   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
+  intervention_names = levels(pe_df[[level_name]])
+  intervention_colors = rep("#b6dbff", length(intervention_names))
+  hh_cols = viridis(length(hh_vals))
+  # pie(rep(1, length(hh_cols)), labels=hh_vals, col=hh_cols)
+  for (hh in 1:length(hh_vals)){
+    intervention_colors[grep(paste0('hh=',hh_vals[hh]), intervention_names)] = hh_cols[hh]
+  }
+  intervention_colors[grep('RTS,S', intervention_names)] = rtss_col
+  intervention_colors[grep('SMC', intervention_names)] = smc_col
+  intervention_colors[intervention_names == 'none'] = none_col
+  # pie(rep(1, length(intervention_colors)), labels=intervention_names, col=intervention_colors)
+  return(list(intervention_names, intervention_colors))
+}
+# example colors
+# pal <- c("#004949","#009292",
+#          +          "#490092","#006ddb","#b66dff","#6db6ff","#b6dbff",
+#          +          "#924900")
+# pie(rep(1,length(pal)), col=pal)
+
+
+
 f_getColors <- function() {
   myColors = c(rgb(0.6, 0.6, 1), rgb(0.3, 0.3, 0.9),
                rgb(0.65, 0.95, 0.65), rgb(0.4, 0.9, 0.4),
@@ -191,18 +215,33 @@ f_add_scenario_name <- function(df, scenario_type) {
     df$vacc_type = str_extract(df$vacc_char, pattern='[a-z]*')
     df$vacc_type[df$vacc_type=='mab'] = 'mAb'
     df$vacc_type[df$vacc_type=='rtss'] = 'RTS,S'
+    df$initial_conc = as.numeric(str_replace(str_extract(df$vacc_char, pattern='ic[0-9]*'), pattern='ic', replacement=''))
     df$max_efficacy = as.numeric(str_replace(str_extract(df$vacc_char, pattern='ime[0-9]*'), pattern='ime', replacement=''))
     df$hh = str_replace(str_extract(df$vacc_char, pattern='ih[0-9]*'), pattern='ih', replacement='')
     df$hh = as.numeric(df$hh)
-    df$vacc_info = paste0(df$vacc_type, ': ', df$max_efficacy, '% max, hh=', df$hh)
+    df$vacc_info = paste0(df$vacc_type, ': ', df$max_efficacy, '% max, hh=', df$hh, ', initC=', df$initial_conc)
     # get the desired levels, sorted appropriately
-    unique_combos = distinct(df[,c('vacc_type', 'max_efficacy', 'hh')])
-    unique_combos$vacc_info = paste0(unique_combos$vacc_type, ': ', unique_combos$max_efficacy, '% max, hh=', unique_combos$hh)
+    unique_combos = distinct(df[,c('vacc_type', 'max_efficacy', 'hh', 'initial_conc')])
+    unique_combos$vacc_info = paste0(unique_combos$vacc_type, ': ', unique_combos$max_efficacy, '% max, hh=', unique_combos$hh, ', initC=', unique_combos$initial_conc)
     unique_combos = unique_combos[order(unique_combos$max_efficacy),]
     unique_combos = unique_combos[order(unique_combos$hh,decreasing=TRUE),]
     unique_combos = unique_combos[order(unique_combos$vacc_type),]
     df$vacc_info = factor(df$vacc_info, levels = unique_combos$vacc_info)
-  } else {
+  } else if(scenario_type == 'smc_rtss_mab'){
+    df = f_add_scenario_name(df, 'vacc_info')
+    df$smc_rtss_mab = as.character(df$vacc_info)
+    df$smc_rtss_mab[df$vacc_coverage <0.01] = ''
+    df$smc_rtss_mab[df$smc_coverage >0] = paste0('SMC. ', df$smc_rtss_mab[df$smc_coverage >0])
+    df$smc_rtss_mab[df$smc_rtss_mab==''] = 'none'
+    df$smc_rtss_mab = factor(df$smc_rtss_mab, levels=c('none', 'SMC. ', levels(df$vacc_info), paste0('SMC. ', levels(df$vacc_info))))
+  } else if (scenario_type == 'smc_rtss_mab_age'){
+    df = f_add_scenario_name(df, 'smc_rtss_mab')
+    df$smc_rtss_mab_age = as.character(df$smc_rtss_mab)
+    df$smc_rtss_mab_age[df$smc_rtss_mab_age !='none'] = paste0('U', df$max_target_age[df$smc_rtss_mab_age !='none'], '. ', df$smc_rtss_mab_age[df$smc_rtss_mab_age !='none'])
+    all_combos = expand.grid(levels(df$smc_rtss_mab), sort(unique(df$max_target_age)))
+    df$smc_rtss_mab_age = factor(df$smc_rtss_mab_age, levels=c('none', paste0('U', all_combos$Var2, '. ', all_combos$Var1)))
+    
+  }else {
     warning(paste0('scenario_type: ', scenario_type, ' not recognized by the f_add_scenario_name function.'))
   }
   return(df)
@@ -334,7 +373,7 @@ load_Age_monthly_Cases <- function(simout_dir, exp_name, exp_sweeps = NULL, add_
              year = year - min(year, na.rm=TRUE))
   }
 
-  exp_sweeps <- c(exp_sweeps, c('Scenario_id', 'Annual_EIR', 'seasonality', 'Cohort_birth_month', 'vacc_char',
+  exp_sweeps <- c(exp_sweeps, c('Scenario_id', 'Annual_EIR', 'seasonality', 'Cohort_birth_month', 'max_target_age', 'vacc_char',
                                 'vacc_coverage', 'cm_coverage', 'smc_coverage', 'frac_high_access',
                                 'cm_target_group', 'smc_target_group', 'vacc_target_group'))
   if (any(!(exp_sweeps %in% colnames(cases_df)))) exp_sweeps <- exp_sweeps[-which(!(exp_sweeps %in% colnames(cases_df)))]
@@ -350,6 +389,7 @@ load_Age_monthly_Cases <- function(simout_dir, exp_name, exp_sweeps = NULL, add_
 
   # get averages across runs and optional across birth cohorts; calculate rates per 1000 people per year
   if (!keep_birth_month & ('Cohort_birth_month' %in% exp_sweeps)) exp_sweeps <- exp_sweeps[-which(exp_sweeps == 'Cohort_birth_month')]
+  if (('Scenario_id' %in% exp_sweeps)) exp_sweeps <- exp_sweeps[-which(exp_sweeps == 'Scenario_id')]
   cases_df_annual_ave = cases_df_annual %>%
     dplyr::group_by_at(c(exp_sweeps, 'year')) %>%
     dplyr::summarise(clinical_cases = mean(total_cases),
@@ -400,7 +440,7 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
   intervention_coverages <- intervention_coverages[-which(intervention_coverages == reference)]
 
   # remove non-reference scenarios and associated columns
-  remove_cols <- c(intervention_coverages, 'Scenario_id', 'vacc_char', 'vacc_target_group', 'smc_target_group', 'frac_high_access')
+  remove_cols <- c(intervention_coverages, 'Scenario_id', 'vacc_char', 'vacc_target_group', 'smc_target_group', 'frac_high_access', 'max_target_age')
   if (any(!remove_cols %in% colnames(dat))) remove_cols <- remove_cols[-which(!(remove_cols %in% colnames(dat)))]
   df_references = dat %>%
     filter(across(intervention_coverages, ~. == 0)) %>%
@@ -408,10 +448,18 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
     dplyr::select(-all_of(remove_cols)) %>%
     rename(clinical_cases_ref = clinical_cases,
            severe_cases_ref = severe_cases)
-  df_references = add_PfPR_2_10(prev_df_ave = df_references, pfpr_colname = 'pfpr', exp_sweeps = exp_sweeps) %>%
+  # add PfPR_2_10 and get mean across any duplicate simulations
+  ref_exp_sweeps = exp_sweeps
+  if (any(!(ref_exp_sweeps %in% colnames(df_references)))) ref_exp_sweeps <- ref_exp_sweeps[-which(!(ref_exp_sweeps %in% colnames(df_references)))]
+  df_references = add_PfPR_2_10(prev_df_ave = df_references, pfpr_colname = 'pfpr', exp_sweeps = ref_exp_sweeps) %>%
     rename(pfpr_2_10_ref = PfPR_2_10) %>%
-    dplyr::select(-pfpr)
-
+    dplyr::select(-pfpr) %>%
+    dplyr::group_by_at(c(ref_exp_sweeps)) %>%
+    dplyr::summarise(clinical_cases_ref = mean(clinical_cases_ref),
+                     severe_cases_ref = mean(severe_cases_ref),
+                     pfpr_2_10_ref = mean(pfpr_2_10_ref))
+  # remove any duplicate rows that remain
+  df_references = dplyr::distinct(df_references)
 
   # Comparison 2: reference scenarios are those without RTS,S
   # remove non-reference scenarios and associated columns
@@ -423,10 +471,19 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
     dplyr::select(-all_of(remove_cols)) %>%
     rename(clinical_cases_no_vacc = clinical_cases,
            severe_cases_no_vacc = severe_cases)
-  df_no_vacc_references = add_PfPR_2_10(prev_df_ave = df_no_vacc_references, pfpr_colname = 'pfpr', exp_sweeps = exp_sweeps) %>%
+  # add PfPR_2_10 and get mean across any duplicate simulations
+  ref_exp_sweeps = exp_sweeps
+  if (any(!(ref_exp_sweeps %in% colnames(df_no_vacc_references)))) ref_exp_sweeps <- ref_exp_sweeps[-which(!(ref_exp_sweeps %in% colnames(df_no_vacc_references)))]
+  df_no_vacc_references = add_PfPR_2_10(prev_df_ave = df_no_vacc_references, pfpr_colname = 'pfpr', exp_sweeps = ref_exp_sweeps) %>%
     rename(pfpr_2_10_no_vacc = PfPR_2_10) %>%
-    dplyr::select(-pfpr)
-
+    dplyr::select(-pfpr) %>%
+    dplyr::group_by_at(c(ref_exp_sweeps)) %>%
+    dplyr::summarise(clinical_cases_no_vacc = mean(clinical_cases_no_vacc),
+                     severe_cases_no_vacc = mean(severe_cases_no_vacc),
+                     pfpr_2_10_no_vacc = mean(pfpr_2_10_no_vacc))
+  # remove any duplicate rows that remain
+  df_no_vacc_references = dplyr::distinct(df_no_vacc_references)
+  
   # merge the reference values into the data frame
   cases_scenarios_references <- dat %>% left_join(df_references)
   cases_scenarios_references <- cases_scenarios_references %>% left_join(df_no_vacc_references)
@@ -456,7 +513,8 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
       # cases and severe cases averted per 100,000 children, relative to no-RTS,S scenario
       vacc_cases_averted_per100000 = (clinical_cases_no_vacc - clinical_cases) * 100,
       vacc_severe_cases_averted_per100000 = (severe_cases_no_vacc - severe_cases) * 100,
-      age_group = paste(year, '-', (year + 1))
+      age_group = paste(year, '-', (year + 1)), 
+      pop = pop
     )
 
 
@@ -478,7 +536,8 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
                        severe_cases_ref = mean(severe_cases_ref),
                        severe_cases_no_vacc = mean(severe_cases_no_vacc),
                        pfpr_2_10_no_vacc = mean(pfpr_2_10_no_vacc),
-                       pfpr_2_10_ref = mean(pfpr_2_10_ref)) %>%
+                       pfpr_2_10_ref = mean(pfpr_2_10_ref),
+                       pop = mean(pop)) %>%
       mutate(age_group = paste0('U', i_max)) %>%
       dplyr::ungroup()
 
@@ -502,7 +561,8 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
         severe_cases_averted_per100000 = (severe_cases_ref - severe_cases) * 100,
         # cases and severe cases averted per 100,000 children, relative to no-RTS,S scenario
         vacc_cases_averted_per100000 = (clinical_cases_no_vacc - clinical_cases) * 100,
-        vacc_severe_cases_averted_per100000 = (severe_cases_no_vacc - severe_cases) * 100)
+        vacc_severe_cases_averted_per100000 = (severe_cases_no_vacc - severe_cases) * 100, 
+        pop = pop)
     cases_age_aggregated_list[[length(cases_age_aggregated_list) + 1]] <- tdf
   }
 

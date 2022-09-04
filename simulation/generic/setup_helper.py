@@ -80,7 +80,8 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
         scen_df['smc_target_group'] = 'random'
     if 'cm_target_group' not in scen_df.columns:
         scen_df['cm_target_group'] = 'random'
-
+    if 'max_target_age' not in scen_df.columns:
+        scen_df['max_target_age'] = '5'
     scen_row = scen_df[scen_df['setting_id'] == id]
 
     # DEMOGRAPHICS
@@ -135,7 +136,8 @@ def setup_setting(cb, scen_df, id, eir_monthly_multipliers, EIR_scale='monthly',
             'cm_target_group': scen_row['cm_target_group'][0],
             'frac_high_access': scen_row['frac_high_access'][0],
             # 'ipti_mode': scen_row['ipti_mode'][0],
-            'vacc_char': vacc_char_vals
+            'vacc_char': vacc_char_vals,
+            'max_target_age': scen_row['max_target_age'][0]
             }
 
 

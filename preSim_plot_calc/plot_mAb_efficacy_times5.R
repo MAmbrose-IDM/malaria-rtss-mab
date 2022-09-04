@@ -71,6 +71,15 @@ calc_concentration_through_time = function(initial_concentration, fast_frac, k1,
   return(concentration_through_time)
 }
 
+calc_eff_by_conc = function(concentration_values, max_efficacy, hh=NA, nn=NA, m2=NA, hill_func=TRUE){
+  if(hill_func){
+    efficacy = max_efficacy / (1+(hh/concentration_values)^nn)
+  } else{
+    efficacy = max_efficacy * (1-exp(m2*concentration_values))
+  }
+  return(efficacy)
+}
+
 calc_effacy_through_time = function(initial_concentration, max_efficacy, fast_frac, k1, k2, m2=NA, hh=NA, nn=NA, hill_func=TRUE, xx=seq(1,365*3), booster_day=NA, create_plot_panel=FALSE){  # time_switch
   concentration_through_time = calc_concentration_through_time(initial_concentration, fast_frac, k1, k2, xx)
 
@@ -81,11 +90,7 @@ calc_effacy_through_time = function(initial_concentration, max_efficacy, fast_fr
                                    calc_concentration_through_time(initial_concentration=after_booster_initial_concentration, fast_frac=fast_frac, k1=k1, k2=k2, xx=bb))
                                    # after_booster_initial_concentration*(fast_frac*exp(-bb / k1) + (1-fast_frac)*exp(-bb / k2)))
   }
-  if(hill_func){
-    efficacy_through_time = max_efficacy / (1+(hh/concentration_through_time)^nn)
-  } else{
-    efficacy_through_time = max_efficacy * (1-exp(m2*concentration_through_time))
-  }
+  efficacy_through_time = calc_eff_by_conc(concentration_values=concentration_through_time, max_efficacy=max_efficacy, hh=hh, nn=nn, m2=m2, hill_func=hill_func)
 
   if(create_plot_panel){
     par(mfrow=c(1,3))
@@ -241,7 +246,7 @@ dev.off()
 
 
 ##############################################################################
-# compare exponential and biphasic decay against mAb concentration data
+# compare exponential and biphasic decay against mAb concentration data; fit concentration decay parameters
 ##############################################################################
 
 make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_col='serum_concentration_ug_ml', time_col='time_weeks', max_days=7*24, include_exp=TRUE){
@@ -253,7 +258,7 @@ make_concentration_plot = function(df_mg, fast_frac, k1, k2, m1, title='', conc_
   } else{
     time_multiplier = 1
   }
-  plot(df_mg[[time_col]]*time_multiplier, df_mg[[conc_col]], ylim=c(1,1800), pch=20, log='y', xlim=c(0,max_days), bty='L', xlab='time (days)', ylab='concentration', main=title)
+  plot(df_mg[[time_col]]*time_multiplier, df_mg[[conc_col]], ylim=c(1,1800), pch=20, log='y', xlim=c(0,max_days), bty='L', xlab='time (days)', ylab='concentration (ug/mL)', main=title)
   xx=1:max_days
   if (include_exp){
     # simple exponential
@@ -276,14 +281,14 @@ ref_csvs = paste0(datapath, '/vacc_pkpd/', c('rough_dataGrab_5mgSC_Gaudinski_SF1
 ref_names = c('5mg/kg (SC)', '5mg/kg (IV)', '20mg/kg (IV)', '40mg/kg (IV)')
 ref_weights = c(3, 4, 5, 6)
 # compare roughly data-extracted values with simple exponential versus biphasic decay
-png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData.png'), width=6, height=6, res=900, units='in')
+png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData2.png'), width=6, height=5, res=900, units='in')
 par(mfrow=c(2,2))
 for(rr in 1:length(ref_csvs)){
   df_mg = read.csv(ref_csvs[rr])
-  make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title=ref_names[rr])
-  if(rr==1){
-    legend('topleft', c('data','exponential', 'biphasic'), pch=c(20,NA,NA), lwd=c(NA,1,1), col=c('black','blue','red'), bty='n')
-  }
+  make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title=ref_names[rr], include_exp=FALSE)
+  # if(rr==1){
+  #   legend('topleft', c('data','exponential', 'biphasic'), pch=c(20,NA,NA), lwd=c(NA,1,1), col=c('black','blue','red'), bty='n')
+  # }
 }
 par(mfrow=c(1,1))
 dev.off()
@@ -309,6 +314,14 @@ get_ref_func_distance = function(df_mg, conc_col='serum_concentration_ug_ml', ti
     return(mean(df_mg$abs_diff))
   }
 }
+
+# ref_csvs = paste0(datapath, '/vacc_pkpd/', c('rough_dataGrab_5mgSC_Gaudinski_SF1.csv', 'rough_dataGrab_5mg_Gaudinski_SF1.csv', 'rough_dataGrab_20mg_Gaudinski_SF1.csv', 'rough_dataGrab_40mg_Gaudinski_SF1.csv'))
+# ref_names = c('5mg/kg (SC)', '5mg/kg (IV)', '20mg/kg (IV)', '40mg/kg (IV)')
+ref_csvs = paste0(datapath, '/Wu et al_2022/', c('Wu_Fig3_1iv.csv', 'Wu_Fig3_5sc.csv', 'Wu_Fig3_5iv.csv', 'Wu_Fig3_20iv.csv'))
+ref_names = c('5mg/kg (IV)','5mg/kg (SC)', '5mg/kg (IV)', '20mg/kg (IV)')
+ref_weights = c(5, 1, 5, 5)
+time_col='time_days'
+
 # # iteration 1
 # fast_frac_vals = seq(0,1,length.out=15)
 # k1_vals = 10^seq(-1, 3, length.out=20)
@@ -320,40 +333,49 @@ get_ref_func_distance = function(df_mg, conc_col='serum_concentration_ug_ml', ti
 # k2_vals = 10^seq(-1, 3, length.out=25)
 ## -> results: best_match = c(5, 12, 19), corresponding to fast_frac=0.722, k1=6.81, k2=100. min(diff_outputs) = 4.94
 # iteration 3
-fast_frac_vals = seq(0.5,1,length.out=10)
-k1_vals = seq(4, 10, length.out=25)
-k2_vals = seq(60, 130, length.out=25)
-## -> results: best_match = c(5,11,13), corresponding to fast_frac=0.722, k1=6.5, k2=95. min(diff_outputs) = 4.9
-diff_outputs = array(0, dim=c(length(fast_frac_vals), length(k1_vals), length(k2_vals)))
-for(i1 in 1:length(fast_frac_vals)){
-  for(i2 in 1:length(k1_vals)){
-    for(i3 in 1:length(k2_vals)){
-      for(rr in 1:length(ref_csvs)){
-        df_mg = read.csv(ref_csvs[rr])
-        cur_diff = get_ref_func_distance(df_mg, conc_col='serum_concentration_ug_ml', time_col='time_weeks', fast_frac=fast_frac_vals[i1], k1=k1_vals[i2], k2=k2_vals[i3], get_rel_diff=TRUE)
-        diff_outputs[i1,i2,i3] = diff_outputs[i1,i2,i3] + ref_weights[rr] * cur_diff
+overwrite_file = FALSE
+if(!file.exists(paste0(projectpath, '/nonSimFigures/mAb_concDecay_fit.csv')) | overwrite_file){
+  fast_frac_vals = seq(0.5,1,length.out=10)
+  k1_vals = seq(4, 10, length.out=25)
+  k2_vals = seq(60, 130, length.out=25)
+  ## -> results: best_match = c(5,11,13), corresponding to fast_frac=0.722, k1=6.5, k2=95. min(diff_outputs) = 4.9
+  diff_outputs = array(0, dim=c(length(fast_frac_vals), length(k1_vals), length(k2_vals)))
+  for(i1 in 1:length(fast_frac_vals)){
+    for(i2 in 1:length(k1_vals)){
+      for(i3 in 1:length(k2_vals)){
+        for(rr in 1:length(ref_csvs)){
+          df_mg = read.csv(ref_csvs[rr])
+          cur_diff = get_ref_func_distance(df_mg, conc_col='serum_concentration_ug_ml', time_col=time_col, fast_frac=fast_frac_vals[i1], k1=k1_vals[i2], k2=k2_vals[i3], get_rel_diff=TRUE)
+          diff_outputs[i1,i2,i3] = diff_outputs[i1,i2,i3] + ref_weights[rr] * cur_diff
+        }
       }
     }
   }
+  
+  
+  
+  best_match = which(diff_outputs == min(diff_outputs), arr.ind=TRUE)[1,]
+  png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData_fit_Wu.png'), width=6, height=5, res=900, units='in')
+  par(mfrow=c(2,2))
+  for(rr in 1:length(ref_csvs)){
+    df_mg = read.csv(ref_csvs[rr])
+    make_concentration_plot(df_mg, fast_frac=fast_frac_vals[best_match[1]], k1=k1_vals[best_match[2]], k2=k2_vals[best_match[3]], m1=NA, time_col=time_col, title=ref_names[rr],include_exp=FALSE)
+  }
+  dev.off()
+  par(mfrow=c(1,1))
+  print(best_match)
+  print(min(diff_outputs))
+  print(fast_frac_vals[best_match[1]])
+  print(k1_vals[best_match[2]])
+  print(k2_vals[best_match[3]])
+  
+  best_match_df = data.frame('fast_frac' = fast_frac_vals[best_match[1]],
+                             'k1' = k1_vals[best_match[2]],
+                             'k2' = k2_vals[best_match[3]])
+  # write.csv(best_match_df, file=paste0(projectpath, '/nonSimFigures/mAb_concDecay_fit.csv'), row.names=FALSE)
+  write.csv(best_match_df, file=paste0(projectpath, '/nonSimFigures/mAb_concDecay_fit_Wu.csv'), row.names=FALSE)
 }
-
-
-
-best_match = which(diff_outputs == min(diff_outputs), arr.ind=TRUE)[1,]
-png(filename=paste0(projectpath, '/nonSimFigures/mAb_concDecay_wData_fit.png'), width=6, height=5, res=900, units='in')
-par(mfrow=c(2,2))
-for(rr in 1:length(ref_csvs)){
-  df_mg = read.csv(ref_csvs[rr])
-  make_concentration_plot(df_mg, fast_frac=fast_frac_vals[best_match[1]], k1=k1_vals[best_match[2]], k2=k2_vals[best_match[3]], m1=NA, title=ref_names[rr],include_exp=FALSE)
-}
-dev.off()
-par(mfrow=c(1,1))
-print(best_match)
-print(min(diff_outputs))
-print(fast_frac_vals[best_match[1]])
-print(k1_vals[best_match[2]])
-print(k2_vals[best_match[3]])
-
+best_match_conc_mab_df = read.csv(paste0(projectpath, '/nonSimFigures/mAb_concDecay_fit.csv'))
 
 
 ##############################################################################
@@ -412,6 +434,84 @@ make_concentration_plot(df_mg, fast_frac, k1, k2, m1, title='6-12 weeks (no boos
 par(mfrow=c(1,1))
 dev.off()
 
+
+
+##############################################################################
+# get efficacy-by-concentration parameters 
+##############################################################################
+get_conc_infect_lik = function(concentration_df, conc_col='serum_concentration_ug_ml', max_efficacy, hh, nn){
+  concentration_df$prob_protect = calc_eff_by_conc(concentration_values=concentration_df[[conc_col]], max_efficacy=max_efficacy, hh=hh, nn=nn)
+  concentration_df$lik = concentration_df$prob_protect
+  concentration_df$lik[concentration_df$infected] = (1-concentration_df$prob_protect[concentration_df$infected])
+  loglik = sum(log(concentration_df$lik))
+  return(loglik)
+}
+
+concentration_df = read.csv(paste0(datapath, '/Wu et al_2022/Wu_Fig3_concentrations_at_challenge.csv'))
+overwrite_file = FALSE
+if(!file.exists(paste0(projectpath, '/nonSimFigures/mAb_effConc_fit.csv')) | overwrite_file){
+  max_eff_vals = c(0.8, 0.85, 0.9, 0.95, 0.98)
+  hh_vals = seq(1,12,length.out=30)
+  nn_vals = seq(0.1,10, length.out=30)
+  loglik_outputs = array(0, dim=c(length(max_eff_vals), length(hh_vals), length(nn_vals)),
+                         dimnames = list(max_efficacy = max_eff_vals,  hh = hh_vals, nn = nn_vals))
+  for(i1 in 1:length(max_eff_vals)){
+    for(i2 in 1:length(hh_vals)){
+      for(i3 in 1:length(nn_vals)){
+        loglik_outputs[i1, i2, i3] = get_conc_infect_lik(concentration_df, max_efficacy = max_eff_vals[i1], hh=hh_vals[i2], nn=nn_vals[i3])
+      }
+    }
+  }
+  # create dataframe with param values and  loglikelihood values
+  loglik_df = as.data.frame.table(loglik_outputs)
+  indx = sapply(loglik_df, is.factor)
+  loglik_df[indx] = lapply(loglik_df[indx], function(x) as.numeric(as.character(x)))
+  loglik_df_sorted = loglik_df[order(loglik_df$Freq, decreasing=TRUE),]
+  colnames(loglik_df_sorted)[colnames(loglik_df_sorted)=='Freq'] = 'loglik'
+  # max(loglik_df_sorted$hh[1:200])
+  # min(loglik_df_sorted$hh[1:200])
+  # max(loglik_df_sorted$nn[1:200])
+  # min(loglik_df_sorted$nn[1:200])
+
+  
+  png(filename=paste0(projectpath, '/nonSimFigures/mAb_effConc_wData_fit.png'), width=3, height=2.5, res=900, units='in')
+  concs = 1:ceiling(max(concentration_df$serum_concentration_ug_ml, na.rm=TRUE))
+  par(mfrow=c(1,1))
+  colors = rainbow(nvals)
+  colors[1]='black'
+  plot(concs, calc_eff_by_conc(concentration_values=concs, max_efficacy=loglik_df_sorted$max_efficacy[1], hh=loglik_df_sorted$hh[1], nn=loglik_df_sorted$nn[1]),
+       type='l', lwd=2, col=colors[1], log='x', ylim=c(0,1), ylab = 'probability of protection', xlab='concentration (ug/ml)', bty='L')
+  nvals=10
+  for(ll in 2:nvals){
+    lines(concs, calc_eff_by_conc(concentration_values=concs, max_efficacy=loglik_df_sorted$max_efficacy[ll], hh=loglik_df_sorted$hh[ll], nn=loglik_df_sorted$nn[ll]),
+         type='l', lwd=1, col=colors[ll])
+  }
+  points(concentration_df$serum_concentration_ug_ml, concentration_df$infected, pch=20)
+  legend('right', bty='n', paste0('ME ', round(loglik_df_sorted$max_efficacy[1:nvals],2), '; hh ', round(loglik_df_sorted$hh[1:nvals],1), '; nn ', round(loglik_df_sorted$nn[1:nvals],2)), col=colors, lwd=1, cex=0.85)
+  dev.off()
+  write.csv(loglik_df_sorted, file=paste0(projectpath, '/nonSimFigures/mAb_effConc_fit.csv'), row.names=FALSE)
+
+}
+loglik_df_sorted = read.csv(paste0(projectpath, '/nonSimFigures/mAb_effConc_fit.csv'))
+
+
+# plot efficacy through time for different starting concentrations
+initial_concentrations=c(100, 1000); ltys = c(1,2)
+ll_index = 1
+oo=calc_effacy_through_time(initial_concentration=initial_concentration, max_efficacy=loglik_df_sorted$max_efficacy[ll_index], fast_frac=mab_fast_frac, k1=mab_k1, k2=mab_k2, hh=loglik_df_sorted$hh[ll_index], nn=loglik_df_sorted$nn[ll_index], hill_func=TRUE, xx=seq(1,365*2), booster_day=NA, create_plot_panel=TRUE)
+png(filename=paste0(projectpath, '/nonSimFigures/effTime_mAb_topFits.png'), width=6, height=5, res=900, units='in')
+plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='days', ylab='efficacy at preventing infection', main='Efficacy against infection through time')
+xx=1:(365*2)
+for(i1 in 1:length(initial_concentrations)){
+  for(ll_index in 1:10){
+    lines(xx, calc_effacy_through_time(initial_concentration=initial_concentrations[i1], max_efficacy=loglik_df_sorted$max_efficacy[ll_index], fast_frac=mab_fast_frac, k1=mab_k1, k2=mab_k2, hh=loglik_df_sorted$hh[ll_index], nn=loglik_df_sorted$nn[ll_index], xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+          col=colors[ll_index], lty=ltys[i1])
+  }
+}
+lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
+      col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
+legend('topright', bty='n', paste0('ME ', round(loglik_df_sorted$max_efficacy[1:nvals],2), '; hh ', round(loglik_df_sorted$hh[1:nvals],1), '; nn ', round(loglik_df_sorted$nn[1:nvals],2)), col=colors, lwd=1, cex=0.85)
+dev.off()
 
 
 
@@ -543,7 +643,7 @@ nns = c(2)
 hhs = c(5, 10, 20, 40)   # c(5, 10, 20, 40, 60)     c(10, 20, 40) 
 colors = viridis(length(hhs))
 png(filename=paste0(projectpath, '/nonSimFigures/sweep_mAb_plannedParams4.png'), width=6, height=5, res=900, units='in')
-plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='time', ylab='efficacy', main='Alternative TPPs')
+plot(NA, xlim=c(0,365*2), ylim=c(0,1), bty='L', xlab='days', ylab='efficacy at preventing infection', main='Alternative TPPs')
 for(i1 in 1:length(initial_concentrations)){
   for(i2 in 1:length(max_efficacies)){
     for(i3 in 1:length(nns)){
@@ -556,7 +656,7 @@ for(i1 in 1:length(initial_concentrations)){
 }
 lines(xx, calc_effacy_through_time(initial_concentration=rtss4_initial_concentration, max_efficacy=rtss4_max_efficacy, fast_frac=rtss4_fast_frac, k1=rtss4_k1, k2=rtss4_k2, nn=rtss4_nn, hh=rtss4_hh, xx=xx, booster_day=NA, create_plot_panel=FALSE)[[1]],
       col=rgb(0,0,0,0.2), lwd=3.5, lty=1)
-legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='hh', bty='n')
+legend(x=500, y=1, legend=hhs, lty=1, col=colors, title='EC50', bty='n')
 legend(x=500, y=0.5, legend=max_efficacies, lty=ltys, col='black', title='max efficacy', bty='n')
 dev.off()
 

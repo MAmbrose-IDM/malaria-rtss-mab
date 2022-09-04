@@ -22,9 +22,9 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-# exp_name_comp1 = 'sweep1_seeds1'
-# exp_name_comp2 = 'sweep2_seeds1'
-exp_name = 'sweep4_seeds1'
+exp_name_comp1 = 'sweep4_seeds1'
+exp_name_comp2 = 'sweep4b_seeds1'
+# exp_name = 'sweep4_seeds1'
 
 simout_dir=file.path(projectpath, 'simulation_output')
 if (!dir.exists(paste0(simout_dir, '/_plots'))) dir.create(paste0(simout_dir, '/_plots'))
@@ -35,8 +35,8 @@ if (!dir.exists(paste0(simout_dir, '/_plots/pdf'))) dir.create(paste0(simout_dir
 #   averted with RTS,S versus mAbs across mAb params
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # exp_name = exp_name_comp1
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
-                                    max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2), add_PE_perAge=TRUE,
+                                    max_years=c(1, 3, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 
 pe_df = sim_output[[3]]
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
@@ -45,10 +45,10 @@ pe_df$hh[pe_df$vacc_type %in% c('rtss', 'RTS,S')]=NA
 
 # subset simulations
 cur_cm = 0.6
-cur_age = 'U5'
+cur_age = 'U8'
 cur_smcs = c(0)
 cur_eirs = c(30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -85,9 +85,9 @@ gg2 = ggplot(pe_df_cur, aes(x=hh, y=cases_averted_per100000, group=interaction(v
   xlab('speed of protection decline (parameter hh)') +
   facet_wrap(facets='seasonality', nrow=1) + 
   theme_bw()
-f_save_plot(gg1, paste0('compare_rtss_mAb_frac_cases_averted_by_hh_eff.png'),
+f_save_plot(gg1, paste0('compare_rtss_mAb_frac_cases_', cur_age,'_averted_by_hh_eff.png'),
             file.path(simout_dir, '_plots'), width = 6, height = 4, units = 'in', device_format = device_format)
-f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_averted_by_hh_eff.png'),
+f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_eff.png'),
             file.path(simout_dir, '_plots'), width = 6, height = 4, units = 'in', device_format = device_format)
 
 
