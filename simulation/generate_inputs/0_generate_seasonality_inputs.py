@@ -10,7 +10,7 @@ from simulation.load_paths import load_box_paths
 def create_eir_seasonality(projectpath, datapath):
     """create seasonality files with monthly EIR rescaling values. Include seasonalities for Phase III trial sites,
     Chandramohan site, and various sites used for vaccine sweep explorations."""
-    phase3_eirs = pd.read_csv(os.path.join(datapath, 'normalizedEIRprofilesFromRTSSincidenceChildren.csv'))
+    phase3_eirs = pd.read_csv(os.path.join(datapath, 'rtss_phase3', 'normalizedEIRprofilesFromRTSSincidenceChildren.csv'))
     df_phase3 = pd.DataFrame(data={'month': [ii+1 for ii in range(12)]})
     for col in phase3_eirs.columns:
         if not col == 'month':
@@ -32,6 +32,8 @@ def create_eir_seasonality(projectpath, datapath):
     eir_high_JuneStart = [*eir_high[5:12], *eir_high[0:5]]
     eir_sahel = [0.1, 0.1, 0.1, 0.01, 0.1, 0.1, 5, 15, 30, 10, 2, 1]
     eir_sahel_JuneStart = [*eir_sahel[5:12], *eir_sahel[0:5]] / np.sum(eir_sahel)
+    eir_higher = [1.32938786e-02, 9.17725409e-03, 1.82650259e-03, 7.87277594e-05, 2.16054609e-03, 2.37440071e-02,
+                  1.22541062e-01, 2.22065556e-01, 3.40459020e-01, 1.61189619e-01, 6.78665164e-02, 3.55973099e-02]
     eir_higher_JuneStart = [2.37440071e-02, 1.22541062e-01, 2.22065556e-01, 3.40459020e-01,
                             1.61189619e-01, 6.78665164e-02, 3.55973099e-02, 1.32938786e-02,
                             9.17725409e-03, 1.82650259e-03, 7.87277594e-05,
@@ -68,7 +70,7 @@ def create_eir_seasonality(projectpath, datapath):
     eir_flat = [1 / 12] * 12
 
     df2 = pd.DataFrame(
-        data={'high_unimodal': eir_high, 'moderate_unimodal': eir_med, 'constant': eir_flat,
+        data={'higher_unimodal': eir_higher, 'high_unimodal': eir_high, 'moderate_unimodal': eir_med, 'constant': eir_flat,
               'kintampo': eir_kintampo,
               'high_unimodal_JuneStart': eir_high_JuneStart,
               'kintampo_JuneStart': eir_kintampo_JuneStart,

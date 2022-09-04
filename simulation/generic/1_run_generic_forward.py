@@ -33,11 +33,11 @@ NO-INTERVENTIONS
 ___.csv
 """
 num_seeds = 1
-scen_csv = 'sweep4.csv'
+scen_csv = 'sweep4b.csv'
 expname = scen_csv.replace('.csv', '_seeds%i' % num_seeds)
 ds_name = 'run_col'
 
-years = 8  # for general runs: 8 (was 10), for Phase3 and ChandramohanTrial: 6
+years = 8  # for general runs: 8, seed 6: 10, for Phase3 and ChandramohanTrial: 6
 use_12_cohorts_flag = True  # for general runs: True, for validation experiments: False
                             # If True, simulates one cohort born in each month (seasonality and SMC dates updated accordingly)
 

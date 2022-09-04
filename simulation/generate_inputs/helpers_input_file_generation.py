@@ -69,7 +69,7 @@ def get_parameter_space():
     return parameter_space
 
 
-def create_intervention_inputs(param_dic, projectpath):
+def create_intervention_inputs(param_dic, projectpath, max_target_age=5):
     """ create input csvs with the relevant intervention specifications for the scenarios"""
     cm_coverage = param_dic['cm_coverage']
     smc_coverage = param_dic['smc_coverage']
@@ -130,8 +130,8 @@ def create_intervention_inputs(param_dic, projectpath):
                 'runcol': ['run'] * num_vacc
             })
             vacc_camp_df.to_csv(os.path.join(projectpath, 'simulation_inputs', 'vaccines',
-                                   'vacc_campaign_%s_%icoverage_%ibooster.csv' % (
-                                   vacc_filename_description, 100 * float(vacc), 100 * float(booster_coverage_vacc))))
+                                   'vacc_campaign_%s_U%i_%icoverage_%ibooster.csv' % (
+                                   vacc_filename_description, max_target_age, 100 * float(vacc), 100 * float(booster_coverage_vacc))))
 
             for ii in range(len(initial_hhs)):
                 for jj in range(len(initial_nns)):
@@ -185,11 +185,11 @@ def create_intervention_inputs(param_dic, projectpath):
                 df_new_year['simday'] = df_base_year['simday'] + 365 * (yy+1)
                 df_all_years = df_all_years.append(df_new_year)
         df_all_years.to_csv(os.path.join(projectpath, 'simulation_inputs', 'SMC',
-                                         'SMC_%s_%icoverage.csv' % (vacc_filename_description, 100 * float(smc))))
+                                         'SMC_%s_U%i_%icoverage.csv' % (vacc_filename_description, max_target_age, 100 * float(smc))))
     return vacc_char_files
 
 
-def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=['none']):
+def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=['none'], max_target_age=5):
     annual_EIR = param_dic['annual_EIR']
     seasonality = param_dic['seasonality']
     cm_coverage = param_dic['cm_coverage']
@@ -239,14 +239,15 @@ def create_coordinator_csvs(param_dic, base_scenario_filepath, vacc_char_files=[
     df['CM_filename'] = [os.path.join(base_scenario_filepath, 'CM', 'CM_constant_%icoverage.csv' % (100 * float(yy)))
                          for yy in df['cm_coverage']]
     df['SMC_filename'] = [os.path.join(base_scenario_filepath, 'SMC',
-                                       'SMC_%s_%icoverage.csv' % (vacc_filename_description, 100 * float(yy))) for yy in
+                                       'SMC_%s_U%i_%icoverage.csv' % (vacc_filename_description, max_target_age, 100 * float(yy))) for yy in
                           df['smc_coverage']]
     df.loc[df.smc_coverage == '0', 'SMC_filename'] = ''
     df['VACC_filename'] = [os.path.join(base_scenario_filepath, 'vaccines',
-                                        'vacc_campaign_%s_%icoverage_%ibooster.csv' % (
-                                        vacc_filename_description, 100 * float(yy), 100 * float(booster_coverage_vacc_unscaled)*float(yy)))
+                                        'vacc_campaign_%s_U%i_%icoverage_%ibooster.csv' % (
+                                        vacc_filename_description, max_target_age, 100 * float(yy), 100 * float(booster_coverage_vacc_unscaled)*float(yy)))
                            for yy in df['vacc_coverage']]
     df.loc[df.vacc_coverage == '0', 'VACC_filename'] = ''
+    df['max_target_age'] = max_target_age
 
     return df
 
@@ -281,7 +282,7 @@ def remove_duplicate_scenarios(scen_csv, projectpath):
     scen_df = pd.read_csv(os.path.join(projectpath, 'simulation_inputs', scen_csv),  encoding='latin')
     # remove duplicate RTS,S rows when RTS,S coverage is zero
     vacc0_subset_cols = ['annual_EIR', 'seasonality', 'cm_coverage', 'ipti_coverage', 'smc_coverage',
-                         'frac_high_access', 'cm_target_group', 'smc_target_group']  # columns to identify duplicates
+                         'frac_high_access', 'cm_target_group', 'smc_target_group', 'max_target_age']  # columns to identify duplicates
     vacc0_subset_cols = list(set(vacc0_subset_cols).intersection(scen_df.columns))
     scen_df_vacc0 = scen_df[scen_df.vacc_coverage == 0]
     scen_df_vacc_remainder = scen_df[scen_df.vacc_coverage != 0]
@@ -291,7 +292,7 @@ def remove_duplicate_scenarios(scen_csv, projectpath):
     # remove duplicate SMC rows when SMC coverage is zero
     smc0_subset_cols = ['annual_EIR', 'seasonality', 'cm_coverage', 'ipti_coverage',
                          'vacc_coverage', 'vacc_characteristics', 'vacc_campaign', 'frac_high_access', 'vacc_mode', 'minBoostAge', 'vacc_booster1_min_age',
-                         'cm_target_group', 'vacc_target_group']  # columns to identify duplicates
+                         'cm_target_group', 'vacc_target_group', 'max_target_age']  # columns to identify duplicates
     smc0_subset_cols = list(set(smc0_subset_cols).intersection(scen_df.columns))
     scen_df_smc0 = scen_df[scen_df.smc_coverage == 0]
     scen_df_smc_remainder = scen_df[scen_df.smc_coverage != 0]
@@ -299,7 +300,7 @@ def remove_duplicate_scenarios(scen_csv, projectpath):
     scen_df = pd.concat([scen_df_smc0_fixed, scen_df_smc_remainder])
 
     # re-sort rows
-    scen_df = scen_df.sort_values(by=['annual_EIR', 'seasonality', 'cm_coverage', 'smc_coverage', 'vacc_coverage', 'vacc_target_group'])
+    scen_df = scen_df.sort_values(by=['annual_EIR', 'seasonality', 'max_target_age', 'cm_coverage', 'smc_coverage', 'vacc_coverage', 'vacc_target_group'])
 
     # re-label settings
     scen_df['setting_id'] = ['HX' + str(ii) for ii in list(range(scen_df.shape[0]))]

@@ -91,7 +91,7 @@ class InterventionSuite:
     smc_max_age_col = 'max_age'
     smc_min_age_col = 'min_age'
     smc_TAT_col = 'TAT'
-    smc_leakage = True
+    smc_leakage = False
     smc_leak_agemax = 10
     smc_leak_coverage = 0.081
 
