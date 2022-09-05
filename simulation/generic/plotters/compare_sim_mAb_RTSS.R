@@ -24,6 +24,8 @@ projectpath = paths[2]
 
 exp_name_comp1 = 'sweep4_seeds1'
 exp_name_comp2 = 'sweep4b_seeds1'
+exp_name_comp3 = 'sweep4c_seeds1'
+
 # exp_name = 'sweep4_seeds1'
 
 simout_dir=file.path(projectpath, 'simulation_output')
@@ -35,7 +37,7 @@ if (!dir.exists(paste0(simout_dir, '/_plots/pdf'))) dir.create(paste0(simout_dir
 #   averted with RTS,S versus mAbs across mAb params
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # exp_name = exp_name_comp1
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2), add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3), add_PE_perAge=TRUE,
                                     max_years=c(1, 3, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 
 pe_df = sim_output[[3]]
@@ -45,10 +47,10 @@ pe_df$hh[pe_df$vacc_type %in% c('rtss', 'RTS,S')]=NA
 
 # subset simulations
 cur_cm = 0.6
-cur_age = 'U8'
+cur_age = 'U5'
 cur_smcs = c(0)
 cur_eirs = c(30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal', 'higher_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')#, 'high_unimodal')
 pe_df_cur = filter(pe_df,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -61,12 +63,14 @@ pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 
 
 # create plots with colors matching efficacy-through-time plot
-hhs = sort(unique(pe_df_cur$hh))
-hh_colors = viridis(length(hhs))
+clist = get_intervention_colors(pe_df_cur, level_name = 'hh')
+intervention_names = clist[[1]]
+intervention_colors = clist[[2]]
+
 gg1 = ggplot(pe_df_cur, aes(x=hh, y=protective_efficacy, group=interaction(vacc_type, max_efficacy))) +
   geom_line(aes(linetype=as.factor(max_efficacy)))+
   geom_point(aes(col=as.factor(hh)), size=3)+
-  scale_colour_manual(name='hh', breaks=hhs, values=hh_colors) +
+  scale_colour_manual(name='hh', breaks=intervention_names, values=intervention_colors) +
   scale_linetype_manual(name="max efficacy",values=c("80"=3,"90"=2, "95"=1)) +
   geom_hline(data=pe_df_cur[pe_df_cur$vacc_type %in% c('rtss', 'RTS,S'),], aes(yintercept=protective_efficacy), col=rgb(0.5,0.5,0.5,0.5), linetype=1, size=1.2)+
   ylim(0,NA)+
@@ -77,7 +81,7 @@ gg1 = ggplot(pe_df_cur, aes(x=hh, y=protective_efficacy, group=interaction(vacc_
 gg2 = ggplot(pe_df_cur, aes(x=hh, y=cases_averted_per100000, group=interaction(vacc_type, max_efficacy))) +
   geom_line(aes(linetype=as.factor(max_efficacy)))+
   geom_point(aes(col=as.factor(hh)), size=3)+
-  scale_colour_manual(name='hh', breaks=hhs, values=hh_colors) +
+  scale_colour_manual(name='hh', breaks=intervention_names, values=intervention_colors) +
   scale_linetype_manual(name="max efficacy",values=c("80"=3,"90"=2, "95"=1)) +
   geom_hline(data=pe_df_cur[pe_df_cur$vacc_type %in% c('rtss', 'RTS,S'),], aes(yintercept=cases_averted_per100000), col=rgb(0.5,0.5,0.5,0.5), linetype=1, size=1.2)+
   ylim(0,NA)+
@@ -94,72 +98,15 @@ f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_e
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# Process simulation output and create bar plots comparing cases 
-#   averted with RTS,S versus mAbs across EIRs
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# exp_name = exp_name_comp2
-simout_dir=file.path(projectpath, 'simulation_output')
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
-                                    max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
-pe_df = sim_output[[3]]
-pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
-pe_df = pe_df[!is.na(pe_df$vacc_info),]
-pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EIR)))
-
-# subset simulations
-cur_cm = 0.6
-cur_age = 'U5'
-cur_smcs = c(0)
-cur_eirs = c(5, 10, 30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
-pe_df_cur = filter(pe_df,
-                   age_group == cur_age,
-                   seasonality %in% cur_seasonalities,
-                   Annual_EIR %in% cur_eirs,
-                   cm_coverage == cur_cm,
-                   vacc_coverage > 0,
-                   smc_coverage %in% cur_smcs,
-)
-pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
-
-# percent reduction for simple comparison
-pe_df_cur$vacc_percent_reduction = pe_df_cur$vacc_relative_burden * -100
-pe_df_cur$vacc_percent_reduction_severe = pe_df_cur$vacc_relative_burden_severe * -100
-
-# clinical cases
-gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'vacc_percent_reduction', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'percent reduction in clinical cases \nfrom adding vaccine', scales='fixed', bar_width=0.85) 
-# severe cases
-gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'vacc_percent_reduction_severe', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'percent reduction in severe cases \nfrom adding vaccine', scales='fixed', bar_width=0.85)
-
-# combine plots into panel
-gg_legend = get_legend(gg1)
-gg1 = gg1  + theme(legend.position = 'None')
-gg2 = gg2  + theme(legend.position = 'None')
-gg = plot_grid(gg1,gg2, align='hv', nrow=2)
-gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
-f_save_plot(gg, paste0('burden_reduction_by_vacc_types_for_eir_seasonality_0SMC',
-                       cur_age, '_',
-                       cur_cm * 100, 'CM'),
-            file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
-
-
-
-
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# Process simulation output and create bar plots comparing 
+# Process simulation output and create heat maps comparing 
 #   performance of mAbs relative to RTSS
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# exp_name = exp_name_comp2
-simout_dir=file.path(projectpath, 'simulation_output')
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
-                                    max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+# simout_dir=file.path(projectpath, 'simulation_output')
+# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
+#                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 pe_df = sim_output[[3]]
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
 pe_df = pe_df[!is.na(pe_df$vacc_info),]
@@ -192,7 +139,7 @@ cur_cm = 0.6
 cur_age = 'U5'
 cur_smcs = c(0)
 cur_eirs = c(5, 10, 30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df_compare,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -203,25 +150,25 @@ pe_df_cur = filter(pe_df_compare,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 
-# clinical cases
-gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'cases_averted_compared_to_rtss', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'cases averted (per 100k U5) \nwith mAb compared to RTS,S', scales='fixed', bar_width=0.85) 
-# severe cases
-gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'severe_cases_averted_compared_to_rtss', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'severe cases averted (per 100k U5) \nwith mAb compared to RTS,S', scales='fixed', bar_width=0.85)
-
-# combine plots into panel
-gg_legend = get_legend(gg1)
-gg1 = gg1  + theme(legend.position = 'None')
-gg2 = gg2  + theme(legend.position = 'None')
-gg = plot_grid(gg1,gg2, align='hv', nrow=2)
-gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
-f_save_plot(gg, paste0('cases_averted_mab_compared_rtss_for_eir_seasonality_0SMC',
-                       cur_age, '_',
-                       cur_cm * 100, 'CM'),
-            file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
+# # clinical cases
+# gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'cases_averted_compared_to_rtss', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'cases averted (per 100k U5) \nwith mAb compared to RTS,S', scales='fixed', bar_width=0.85) 
+# # severe cases
+# gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'severe_cases_averted_compared_to_rtss', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'severe cases averted (per 100k U5) \nwith mAb compared to RTS,S', scales='fixed', bar_width=0.85)
+# 
+# # combine plots into panel
+# gg_legend = get_legend(gg1)
+# gg1 = gg1  + theme(legend.position = 'None')
+# gg2 = gg2  + theme(legend.position = 'None')
+# gg = plot_grid(gg1,gg2, align='hv', nrow=2)
+# gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
+# f_save_plot(gg, paste0('cases_averted_mab_compared_rtss_for_eir_seasonality_0SMC',
+#                        cur_age, '_',
+#                        cur_cm * 100, 'CM'),
+#             file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
 
 
 ########################################################
@@ -325,6 +272,61 @@ f_save_plot(gg6, paste0('contour_relative_severe_cases_averted_mab_compared_rtss
 
 
 
+
+# # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# # Process simulation output and create bar plots comparing cases 
+# #   averted with RTS,S versus mAbs across EIRs
+# # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# # simout_dir=file.path(projectpath, 'simulation_output')
+# # sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
+# #                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+# pe_df = sim_output[[3]]
+# pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
+# pe_df = pe_df[!is.na(pe_df$vacc_info),]
+# pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EIR)))
+# 
+# # subset simulations
+# cur_cm = 0.6
+# cur_age = 'U5'
+# cur_smcs = c(0)
+# cur_eirs = c(5, 10, 30)
+# cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal', 'higher_unimodal')
+# pe_df_cur = filter(pe_df,
+#                    age_group == cur_age,
+#                    seasonality %in% cur_seasonalities,
+#                    Annual_EIR %in% cur_eirs,
+#                    cm_coverage == cur_cm,
+#                    vacc_coverage > 0,
+#                    smc_coverage %in% cur_smcs,
+# )
+# pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
+# 
+# # percent reduction for simple comparison
+# pe_df_cur$vacc_percent_reduction = pe_df_cur$vacc_relative_burden * -100
+# pe_df_cur$vacc_percent_reduction_severe = pe_df_cur$vacc_relative_burden_severe * -100
+# 
+# # clinical cases
+# gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'vacc_percent_reduction', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'percent reduction in clinical cases \nfrom adding vaccine', scales='fixed', bar_width=0.85) 
+# # severe cases
+# gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'vacc_percent_reduction_severe', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'percent reduction in severe cases \nfrom adding vaccine', scales='fixed', bar_width=0.85)
+# 
+# # combine plots into panel
+# gg_legend = get_legend(gg1)
+# gg1 = gg1  + theme(legend.position = 'None')
+# gg2 = gg2  + theme(legend.position = 'None')
+# gg = plot_grid(gg1,gg2, align='hv', nrow=2)
+# gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
+# f_save_plot(gg, paste0('burden_reduction_by_vacc_types_for_eir_seasonality_0SMC',
+#                        cur_age, '_',
+#                        cur_cm * 100, 'CM'),
+#             file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
+# 
+# 
+# 
 
 
 

@@ -62,14 +62,22 @@ f_getCustomTheme <- function(fontscl = 1) {
 }
 
 # specify colors for plotted interventions (based on hh for mAbs and specified manually otherwise)
-get_intervention_colors = function(level_name = 'smc_rtss_mab', rtss_col=rgb(0.5,0.5,0.5), smc_col='#924900', none_col='black', hh_vals=c(5, 10, 20, 40, 60, 80)){
+get_intervention_colors = function(df, level_name = 'smc_rtss_mab', rtss_col=rgb(0.5,0.5,0.5), smc_col='#924900', none_col='black', hh_vals=c(5, 10, 20, 40, 60, 80)){
   # Note: in ggplot, use:   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
-  intervention_names = levels(pe_df[[level_name]])
+  if(is.factor(df[[level_name]])){
+    intervention_names = levels(df[[level_name]])
+  } else{
+    intervention_names = sort(unique((df[[level_name]])))
+  }
   intervention_colors = rep("#b6dbff", length(intervention_names))
   hh_cols = viridis(length(hh_vals))
   # pie(rep(1, length(hh_cols)), labels=hh_vals, col=hh_cols)
   for (hh in 1:length(hh_vals)){
-    intervention_colors[grep(paste0('hh=',hh_vals[hh]), intervention_names)] = hh_cols[hh]
+    if(level_name == 'hh'){
+      intervention_colors[intervention_names == hh_vals[hh]] = hh_cols[hh]
+    } else{
+      intervention_colors[grep(paste0('hh=',hh_vals[hh]), intervention_names)] = hh_cols[hh]
+    }
   }
   intervention_colors[grep('RTS,S', intervention_names)] = rtss_col
   intervention_colors[grep('SMC', intervention_names)] = smc_col
@@ -216,17 +224,19 @@ f_add_scenario_name <- function(df, scenario_type) {
     df$vacc_type[df$vacc_type=='mab'] = 'mAb'
     df$vacc_type[df$vacc_type=='rtss'] = 'RTS,S'
     df$initial_conc = as.numeric(str_replace(str_extract(df$vacc_char, pattern='ic[0-9]*'), pattern='ic', replacement=''))
+    # df$max_efficacy = as.numeric(str_replace(str_extract(df$vacc_char, pattern='ime[0-9]*\\.*[0-9]*'), pattern='ime', replacement=''))
     df$max_efficacy = as.numeric(str_replace(str_extract(df$vacc_char, pattern='ime[0-9]*'), pattern='ime', replacement=''))
     df$hh = str_replace(str_extract(df$vacc_char, pattern='ih[0-9]*'), pattern='ih', replacement='')
     df$hh = as.numeric(df$hh)
     df$vacc_info = paste0(df$vacc_type, ': ', df$max_efficacy, '% max, hh=', df$hh, ', initC=', df$initial_conc)
+    df$vacc_info[df$vacc_coverage < 0.001] = 'none'
     # get the desired levels, sorted appropriately
     unique_combos = distinct(df[,c('vacc_type', 'max_efficacy', 'hh', 'initial_conc')])
     unique_combos$vacc_info = paste0(unique_combos$vacc_type, ': ', unique_combos$max_efficacy, '% max, hh=', unique_combos$hh, ', initC=', unique_combos$initial_conc)
     unique_combos = unique_combos[order(unique_combos$max_efficacy),]
     unique_combos = unique_combos[order(unique_combos$hh,decreasing=TRUE),]
     unique_combos = unique_combos[order(unique_combos$vacc_type),]
-    df$vacc_info = factor(df$vacc_info, levels = unique_combos$vacc_info)
+    df$vacc_info = factor(df$vacc_info, levels = c('none', unique_combos$vacc_info))
   } else if(scenario_type == 'smc_rtss_mab'){
     df = f_add_scenario_name(df, 'vacc_info')
     df$smc_rtss_mab = as.character(df$vacc_info)

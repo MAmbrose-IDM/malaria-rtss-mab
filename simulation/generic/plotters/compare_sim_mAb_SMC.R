@@ -23,7 +23,8 @@ datapath = paths[1]
 projectpath = paths[2]
 
 exp_name_comp1 = 'sweep4_seeds1'
-exp_name_comp2 = NA
+exp_name_comp2 = 'sweep4b_seeds1'
+exp_name_comp3 = 'sweep4c_seeds1'
 
 simout_dir=file.path(projectpath, 'simulation_output')
 if (!dir.exists(paste0(simout_dir, '/_plots'))) dir.create(paste0(simout_dir, '/_plots'))
@@ -33,10 +34,10 @@ if (!dir.exists(paste0(simout_dir, '/_plots/pdf'))) dir.create(paste0(simout_dir
 # Process simulation output and create heat plots comparing cases 
 #   averted with SMC versus mAbs across mAb params
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2), add_PE_perAge=TRUE,
-#                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name_comp1, add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3), add_PE_perAge=TRUE,
                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name_comp1, add_PE_perAge=TRUE,
+#                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 pe_df = sim_output[[3]]
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
 pe_df = pe_df[!is.na(pe_df$vacc_info),]
@@ -65,7 +66,7 @@ pe_df_compare$severe_cases_averted_compared_to_smc = pe_df_compare$severe_cases_
 cur_cm = 0.6
 cur_age = 'U5'
 cur_eirs = c(5, 10, 30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df_compare,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -75,25 +76,25 @@ pe_df_cur = filter(pe_df_compare,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 
-# clinical cases
-gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'cases_averted_compared_to_smc', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'cases averted (per 100k U5) \nwith mAb compared to SMC', scales='fixed', bar_width=0.85) 
-# severe cases
-gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'severe_cases_averted_compared_to_smc', bargroup_var = 'vacc_info',
-                            fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
-                            SAVE = FALSE, ylab = 'severe cases averted (per 100k U5) \nwith mAb compared to SMC', scales='fixed', bar_width=0.85)
-
-# combine plots into panel
-gg_legend = get_legend(gg1)
-gg1 = gg1  + theme(legend.position = 'None')
-gg2 = gg2  + theme(legend.position = 'None')
-gg = plot_grid(gg1,gg2, align='hv', nrow=2)
-gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
-f_save_plot(gg, paste0('cases_averted_mab_compared_smc_for_eir_seasonality',
-                       cur_age, '_',
-                       cur_cm * 100, 'CM'),
-            file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
+# # clinical cases
+# gg1 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'cases_averted_compared_to_smc', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'cases averted (per 100k U5) \nwith mAb compared to SMC', scales='fixed', bar_width=0.85) 
+# # severe cases
+# gg2 = plot_grouped_barplots(dat = pe_df_cur, xvar = 'Annual_EIR', yvar = 'severe_cases_averted_compared_to_smc', bargroup_var = 'vacc_info',
+#                             fillvar = 'vacc_info', facet1 = 'seasonality', facet2 = NULL,
+#                             SAVE = FALSE, ylab = 'severe cases averted (per 100k U5) \nwith mAb compared to SMC', scales='fixed', bar_width=0.85)
+# 
+# # combine plots into panel
+# gg_legend = get_legend(gg1)
+# gg1 = gg1  + theme(legend.position = 'None')
+# gg2 = gg2  + theme(legend.position = 'None')
+# gg = plot_grid(gg1,gg2, align='hv', nrow=2)
+# gg = plot_grid(gg, gg_legend, rel_widths = c(1, 0.25))
+# f_save_plot(gg, paste0('cases_averted_mab_compared_smc_for_eir_seasonality',
+#                        cur_age, '_',
+#                        cur_cm * 100, 'CM'),
+#             file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
 
 
 

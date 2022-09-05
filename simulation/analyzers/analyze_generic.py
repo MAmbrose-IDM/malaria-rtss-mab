@@ -111,8 +111,10 @@ if __name__ == "__main__":
         # 'sweep5_seeds1': '26de39e4-f71f-ed11-a9fb-b88303911bc1',
         # 'sweep6_seeds1': '83573b8f-7f29-ed11-a9fc-b88303911bc1',
         # 'sweep7_seeds1': '42f01012-622a-ed11-a9fc-b88303911bc1'
-        'sweep4b_seeds1': '96091669-712c-ed11-a9fc-b88303911bc1',
-        # 'sweep7b_seeds1': 'f8044d7a-6f2c-ed11-a9fc-b88303911bc1'
+        # 'sweep4b_seeds1': '96091669-712c-ed11-a9fc-b88303911bc1',
+        # 'sweep7b_seeds1': 'f8044d7a-6f2c-ed11-a9fc-b88303911bc1',
+        # 'sweep4c_seeds1': 'e4f2ec6a-8c2c-ed11-a9fc-b88303911bc1',
+        'sweep7c_seeds1': 'b1eb7e88-9e2c-ed11-a9fc-b88303911bc1'
     }
 
     sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',

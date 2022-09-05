@@ -33,7 +33,7 @@ NO-INTERVENTIONS
 ___.csv
 """
 num_seeds = 1
-scen_csv = 'sweep4b.csv'
+scen_csv = 'sweep7c.csv'
 expname = scen_csv.replace('.csv', '_seeds%i' % num_seeds)
 ds_name = 'run_col'
 

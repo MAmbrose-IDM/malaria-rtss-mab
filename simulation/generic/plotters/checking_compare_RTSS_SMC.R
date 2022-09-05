@@ -19,9 +19,8 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-# exp_name_comp1 = 'sweep1_seeds1'
-# exp_name_comp2 = 'sweep2_seeds1'
-exp_name = 'sweep4_seeds1'
+exp_name_comp1 = 'sweep4_seeds1'
+exp_name_comp2 = 'sweep4b_seeds1'
 
 simout_dir=file.path(projectpath, 'simulation_output')
 if (!dir.exists(paste0(simout_dir, '/_plots'))) dir.create(paste0(simout_dir, '/_plots'))
@@ -32,7 +31,7 @@ if (!dir.exists(paste0(simout_dir, '/_plots/pdf'))) dir.create(paste0(simout_dir
 #   averted with RTS,S versus mAbs across mAb params
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # exp_name = exp_name_comp1
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2), add_PE_perAge=TRUE,
                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 
 pe_df = sim_output[[3]]
@@ -45,7 +44,7 @@ pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EI
 cur_cm = 0.6
 cur_age = 'U5'
 cur_eirs = c(5, 10, 30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -83,15 +82,12 @@ ggplot(pe_df_compare, aes(x=cases_averted_per100000_rtss, y=cases_averted_per100
   xlim(15000, 120000)+
   geom_abline(intercept=0, slope=1) +
   theme_bw()
-plot(pe_df_compare$cases_averted_per100000_rtss, pe_df_compare$cases_averted_per100000_smc)
-abline(a=0, b=1)
-
 
 
 
 ##########
 # see whether SMC is mis-timed
-cases_df = fread(file.path(simout_dir, exp_name, 'All_Age_monthly_Cases.csv')) %>% rename_with(~gsub(" ", "_", .x))
+cases_df = fread(file.path(simout_dir, exp_name_comp2, 'All_Age_monthly_Cases.csv')) %>% rename_with(~gsub(" ", "_", .x))
 
 
 exp_sweeps = c('Scenario_id', 'Annual_EIR', 'seasonality', 'Cohort_birth_month', 'vacc_char',
