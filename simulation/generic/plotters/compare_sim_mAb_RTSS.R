@@ -8,6 +8,7 @@ library(ggplot2)
 library(stringr)
 library(cowplot)
 library(viridis)
+library(RColorBrewer)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Setup filepaths and parameters
@@ -90,9 +91,9 @@ gg2 = ggplot(pe_df_cur, aes(x=hh, y=cases_averted_per100000, group=interaction(v
   facet_wrap(facets='seasonality', nrow=1) + 
   theme_bw()
 f_save_plot(gg1, paste0('compare_rtss_mAb_frac_cases_', cur_age,'_averted_by_hh_eff.png'),
-            file.path(simout_dir, '_plots'), width = 6, height = 4, units = 'in', device_format = device_format)
+            file.path(simout_dir, '_plots'), width = 7.5, height = 4.5, units = 'in', device_format = device_format)
 f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_eff.png'),
-            file.path(simout_dir, '_plots'), width = 6, height = 4, units = 'in', device_format = device_format)
+            file.path(simout_dir, '_plots'), width = 7.5, height = 4.5, units = 'in', device_format = device_format)
 
 
 
@@ -130,8 +131,8 @@ pe_df_mab = pe_df_mab[pe_df_mab$vacc_coverage > 0,]
 
 # merge the reference values into the data frame
 pe_df_compare <- pe_df_mab %>% left_join(df_rtss)
-pe_df_compare$cases_averted_compared_to_rtss = pe_df_compare$cases_averted_per100000 - pe_df_compare$cases_averted_per100000_rtss
-pe_df_compare$severe_cases_averted_compared_to_rtss = pe_df_compare$severe_cases_averted_per100000 - pe_df_compare$severe_cases_averted_per100000_rtss
+pe_df_compare$cases_averted_compared_to_rtss = (pe_df_compare$cases_averted_per100000 - pe_df_compare$cases_averted_per100000_rtss)/100
+pe_df_compare$severe_cases_averted_compared_to_rtss = (pe_df_compare$severe_cases_averted_per100000 - pe_df_compare$severe_cases_averted_per100000_rtss)/100
 
 
 # subset simulations
@@ -183,9 +184,10 @@ keep_cols = c('Annual_EIR', 'seasonality', 'vacc_char', 'vacc_coverage', 'vacc_t
 compare_mab_rtss = pe_df_cur %>% dplyr::select(keep_cols)
 
 extreme_cases = min(abs(min(compare_mab_rtss$cases_averted_compared_to_rtss)), max(compare_mab_rtss$cases_averted_compared_to_rtss))
-extreme_cases = 30000#floor(extreme_cases/10000)*10000
+extreme_cases = 300#floor(extreme_cases/10000)*10000
 breaks_cases = c(-Inf, seq(-1*extreme_cases, extreme_cases, length.out=6), Inf)
 colors_cases = brewer.pal(n=length(breaks_cases), name='BrBG')
+colors_cases[length(breaks_cases)/2] = '#EFF2DA'
 gg3 = ggplot(compare_mab_rtss, aes(x=hh, y=max_efficacy, z=cases_averted_compared_to_rtss)) +
   geom_contour_filled(na.rm=TRUE, breaks=breaks_cases) +
   scale_fill_manual(
@@ -205,6 +207,7 @@ extreme_severe = min(abs(min(compare_mab_rtss$severe_cases_averted_compared_to_r
 extreme_severe = floor(extreme_severe/10)*10
 breaks_severe = c(-Inf, seq(-1*extreme_severe, extreme_severe, length.out=6), Inf)
 colors_severe = brewer.pal(n=length(breaks_severe), name='BrBG')
+colors_severe[length(breaks_cases)/2] = '#EFF2DA'
 gg4 = ggplot(compare_mab_rtss, aes(x=hh, y=max_efficacy, z=severe_cases_averted_compared_to_rtss)) +
   geom_contour_filled(na.rm=TRUE, breaks=breaks_severe) +
   scale_fill_manual(
@@ -231,6 +234,7 @@ extreme_cases = min(abs(min(compare_mab_rtss$mAb_averted_rel_rtss)), max(compare
 extreme_cases = 0.3#floor(extreme_cases*10)/10
 breaks_cases = c(-3, seq(-1*extreme_cases, extreme_cases, length.out=6), 3)
 colors_cases = brewer.pal(n=length(breaks_cases), name='BrBG')
+colors_cases[length(breaks_cases)/2] = '#EFF2DA'
 gg5 = ggplot(compare_mab_rtss, aes(x=hh, y=max_efficacy, z=mAb_averted_rel_rtss)) +
   geom_contour_filled(na.rm=TRUE, breaks=breaks_cases) +
   scale_fill_manual(

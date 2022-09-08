@@ -50,7 +50,7 @@ age_labels = paste0(age_label_values, '-', (age_label_values + 1))
 ########################################################################################
 # Process simulation output for cases and cases averted by age
 ########################################################################################
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3), add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
                                     max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 # sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name_comp1, add_PE_perAge=TRUE,
 #                                     max_years=c(2, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
@@ -200,12 +200,12 @@ f_save_plot(gg4, paste0('averted_cases_by_age_mAb.png'),
 ######################################## 
 # GR plots build sequence
 ######################################## 
-gg3_GR_width = 7
+gg3_GR_width = 3.2
 gg3_GR_height = 5
 # subset simulations to certain seasonalities and EIRs and to mAbs and no-intervention only
 pe_df_cur = filter(pe_df,
                    seasonality %in% c('moderate_unimodal'),
-                   Annual_EIR %in% c(30, 60, 120),
+                   Annual_EIR %in% c(10, 30, 120),  # c(30, 60, 120)
                    cm_coverage == cur_cm,
                    smc_coverage < 0.01
 )
@@ -222,72 +222,79 @@ pe_df_cur = pe_df_cur[which(pe_df_cur$year < 8),]
 # remove duplicate no-intervention simulations
 pe_df_cur$max_target_age[which(as.character(pe_df_cur$smc_rtss_mab) == 'none')] = 2
 
+# reverse order of EIRs for plotting so largest is in top row (for GR builds)
+pe_df_cur$Annual_EIR = factor(pe_df_cur$Annual_EIR, levels=sort(unique(as.numeric(as.character(pe_df_cur$Annual_EIR))), decreasing=TRUE))
+
+# use average clinical cases per child in each year group
+pe_df_cur$ave_clinical_cases = pe_df_cur$clinical_cases / 1000
+
+
 # plot clinical cases by age
-gg3_GR3 = ggplot(pe_df_cur, aes(x=year, y=clinical_cases))+
+gg3_GR3 = ggplot(pe_df_cur, aes(x=year, y=ave_clinical_cases))+
   geom_point(aes(col=as.factor(smc_rtss_mab), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1.5)+
   geom_line(aes(col=as.factor(smc_rtss_mab), linetype=as.factor(max_target_age), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1)+
-  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=clinical_cases), color='black', size=2)+
+  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=ave_clinical_cases), color='black', size=2)+
   scale_alpha_discrete(range=c(1,0.3))+
   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
   theme_bw()+
   f_getCustomTheme() +
   geom_hline(yintercept=0)+
-  ylab('clinical cases (per 1000)') + 
+  ylab('average number of clinical cases') + 
   xlab('age of child') +
   scale_x_continuous(breaks=age_label_values, labels=age_labels) +
-  facet_grid( rows=vars(Annual_EIR)) + 
-  theme_classic()
-# set legend spacing separately from main plot for consistency across builds
-gg3_GR_legend = get_legend(gg3_GR3)
-p3 = grid.arrange(gg3_GR3 + theme(legend.position="none"),
-                   gg3_GR_legend, nrow=1,widths=c(2, 1))
-f_save_plot(p3, paste0('cases_by_age_mAb_GR3.png'),
+  facet_grid( rows=vars(Annual_EIR)) +
+  theme_classic() + 
+  theme(legend.position="none")
+# # set legend spacing separately from main plot for consistency across builds
+# gg3_GR_legend = get_legend(gg3_GR3)
+# p3 = grid.arrange(gg3_GR3 + theme(legend.position="none"),
+#                    gg3_GR_legend, nrow=1,widths=c(2, 1))
+# f_save_plot(p3, paste0('cases_by_age_mAb_GR3.png'),
+#             file.path(simout_dir, '_plots'), width = gg3_GR_width, height = gg3_GR_height, units = 'in', device_format = device_format)
+f_save_plot(gg3_GR3, paste0('cases_by_age_mAb_GR3.png'),
             file.path(simout_dir, '_plots'), width = gg3_GR_width, height = gg3_GR_height, units = 'in', device_format = device_format)
+
 
 
 # remove older age group targeting
 pe_df_cur = pe_df_cur[which(pe_df_cur$max_target_age %in% c(2)),]
-gg3_GR2 = ggplot(pe_df_cur, aes(x=year, y=clinical_cases))+
+gg3_GR2 = ggplot(pe_df_cur, aes(x=year, y=ave_clinical_cases))+
   geom_point(aes(col=as.factor(smc_rtss_mab), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1.5)+
   geom_line(aes(col=as.factor(smc_rtss_mab), linetype=as.factor(max_target_age), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1)+
-  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=clinical_cases), color='black', size=2)+
+  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=ave_clinical_cases), color='black', size=2)+
   scale_alpha_discrete(range=c(1,0.3))+
   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
   theme_bw()+
   f_getCustomTheme() +
   geom_hline(yintercept=0)+
-  ylab('clinical cases (per 1000)') + 
+  ylab('average number of clinical cases') + 
   xlab('age of child') +
   scale_x_continuous(breaks=age_label_values, labels=age_labels) +
   facet_grid(rows=vars(Annual_EIR)) + 
-  theme_classic()
-# set legend spacing separately from main plot for consistency across builds
-p2 = grid.arrange(gg3_GR2 + theme(legend.position="none"),
-                  gg3_GR_legend, nrow=1,widths=c(2, 1))
-f_save_plot(p2, paste0('cases_by_age_mAb_GR2.png'),
+  theme_classic()+ 
+  theme(legend.position="none")
+f_save_plot(gg3_GR2, paste0('cases_by_age_mAb_GR2.png'),
             file.path(simout_dir, '_plots'), width = gg3_GR_width, height = gg3_GR_height, units = 'in', device_format = device_format)
 
 
 # only show no-intervention scenario
 pe_df_cur = pe_df_cur[which(pe_df_cur$vacc_coverage < 0.01),]
-gg3_GR1 = ggplot(pe_df_cur, aes(x=year, y=clinical_cases))+
+gg3_GR1 = ggplot(pe_df_cur, aes(x=year, y=ave_clinical_cases))+
   geom_point(aes(col=as.factor(smc_rtss_mab), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1.5)+
   geom_line(aes(col=as.factor(smc_rtss_mab), linetype=as.factor(max_target_age), group=smc_rtss_mab_age, alpha=as.factor(max_target_age)), size=1)+
-  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=clinical_cases), color='black', size=2)+
+  geom_line(data=pe_df_cur[which(as.character(pe_df_cur$smc_rtss_mab) == 'none'),], aes(x=year, y=ave_clinical_cases), color='black', size=2)+
   scale_alpha_discrete(range=c(1,0.3))+
   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
   theme_bw()+
   f_getCustomTheme() +
   geom_hline(yintercept=0)+
-  ylab('clinical cases (per 1000)') + 
+  ylab('average number of clinical cases') + 
   xlab('age of child') +
   scale_x_continuous(breaks=age_label_values, labels=age_labels) +
   facet_grid(rows=vars(Annual_EIR)) + 
-  theme_classic()
-# set legend spacing separately from main plot for consistency across builds
-p1 = grid.arrange(gg3_GR1 + theme(legend.position="none"),
-                  gg3_GR_legend, nrow=1,widths=c(2, 1))
-f_save_plot(p1, paste0('cases_by_age_mAb_GR1.png'),
+  theme_classic()+ 
+  theme(legend.position="none")
+f_save_plot(gg3_GR1, paste0('cases_by_age_mAb_GR1.png'),
             file.path(simout_dir, '_plots'), width = gg3_GR_width, height = gg3_GR_height, units = 'in', device_format = device_format)
 
 
@@ -299,14 +306,72 @@ f_save_plot(p1, paste0('cases_by_age_mAb_GR1.png'),
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 ###############################################################
 
-
+# 
+# # checking that UX is the same as sum(0:(X-1))
+# # reason for this: looking at clinical cases by age plots, the difference between no-mAb and mAb seems to be more cases than are shown in the 'mAb-averted' barplot
+# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
+#                                     max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+# 
+# df_group = sim_output[[3]]
+# df_year = sim_output[[4]]
+# 
+# df_group_cur = filter(df_group,
+#                    seasonality == 'moderate_unimodal',
+#                    Annual_EIR == 30,
+#                    cm_coverage == 0.6,
+#                    smc_coverage == 0,
+#                    vacc_char == 'mab_ime95_bme95_ih10_in200_ic1000_iff72_ik1650_ik29500',
+#                    max_target_age == 2
+# )
+# df_year_cur = filter(df_year,
+#                       seasonality == 'moderate_unimodal',
+#                       Annual_EIR == 30,
+#                       cm_coverage == 0.6,
+#                       smc_coverage == 0,
+#                       vacc_char == 'mab_ime95_bme95_ih10_in200_ic1000_iff72_ik1650_ik29500',
+#                       max_target_age == 2
+# )
+# 
+# # average clinical cases per year
+# uu = 8
+# print(paste0('For U', uu, ', average cases per year with mAb is: ', df_group_cur$clinical_cases[df_group_cur$age_group == paste0('U',uu)]))
+# print(paste0('For ages 0:(<', uu, '), average cases per year with mAb is: ', mean(df_year_cur$clinical_cases[df_year_cur$year < uu])))
+# print(paste0('For age ', 0:(uu-1), '-', 1:uu, ', cases per child with mAb is: ', (df_year_cur$clinical_cases[df_year_cur$year < uu])/1000))
+# print(paste0('For age ', 0:(uu-1), '-', 1:uu, ', cases per child without mAb is: ', (df_year_cur$clinical_cases_ref[df_year_cur$year < uu])/1000))
+# 
+# 
+# 
+# print(paste0('For U', uu, ', average cases per year without mAbs is: ', df_group_cur$clinical_cases_ref[df_group_cur$age_group == paste0('U',uu)]))
+# print(paste0('For ages 0:(<', uu, '), average cases per year without mAb is: ', mean(df_year_cur$clinical_cases_ref[df_year_cur$year < uu])))
+# 
+# print(paste0('For U', uu, ', total cases with mAb is: ', df_group_cur$clinical_cases[df_group_cur$age_group == paste0('U',uu)]*uu))
+# print(paste0('For ages 0:(<', uu, '), total cases with mAb is: ', sum(df_year_cur$clinical_cases[df_year_cur$year < uu])))
+# 
+# print(paste0('For U', uu, ', total cases averted is: ', df_group_cur$cases_averted_per100000[df_group_cur$age_group == paste0('U',uu)]*uu))
+# print(paste0('For ages 0:(<', uu, '), total cases averted is: ', sum(df_year_cur$cases_averted_per100000[df_year_cur$year < uu])))
+# print(paste0('For age ', 0:(uu-1), '-', 1:uu, ', total cases averted each age, each child is: ', (df_year_cur$cases_averted_per100000[df_year_cur$year < uu])/100000))
+# print(paste0('For age ', 0:(uu-1), '-', 1:uu, ', total cases averted each age, each child is: ', (df_year_cur$clinical_cases_ref[df_year_cur$year < uu] - df_year_cur$clinical_cases[df_year_cur$year < uu] )/1000))
+# 
+# 
+# 
+# # compare against pe_df_cur$total_cases_averted_across_years_per_child below
+# pe_group_test = filter(pe_df_cur,
+#                        seasonality == 'moderate_unimodal',
+#                        Annual_EIR == 30,
+#                        cm_coverage == 0.6,
+#                        smc_coverage == 0,
+#                        vacc_char == 'mab_ime95_bme95_ih10_in200_ic1000_iff72_ik1650_ik29500',
+#                        max_target_age == 2
+# )
+# pe_group_test$total_cases_averted_across_years
+# pe_group_test$total_cases_averted_across_years_per_child[1]
 
 ###########################################################################
 # plot cases averted per 'dose' of mAbs
 ###########################################################################
 coverage = 0.8
 cost_per_visit = 0.75  # value should include everything aside from cost of drug itself (this value does not depend on dose, same for all ages)
-price_per_g = 30
+price_per_g = 50
 # how many healthcare interactions were in the U2 versus U5 vaccine versions?
 # average number of doses received by each age-year. Starts at 4 months, but given seasonally and we simulate with cohorts
 # for the U2 target, individuals between 4 and 23.99 months receive the vaccine seasonally. 
@@ -329,7 +394,7 @@ pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
 cur_cm = 0.6
 cur_eirs = unique(pe_df$Annual_EIR)
 cur_age_numeric = 8
-cur_age = paste0('U', cur_age_numeric)
+cur_age = paste0('U', (cur_age_numeric))
 cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
 pe_df_cur = filter(pe_df,
                    seasonality %in% cur_seasonalities,
@@ -360,18 +425,18 @@ pe_df_cur$total_cases_averted_across_years_per_child = pe_df_cur$total_cases_ave
 
 # cases averted per unit of the product
 pe_df_cur$cases_averted_per_product_unit = NA
-pe_df_cur$cases_averted_per_product_unit[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (total_dose_price_per_child_u2 * pe_df_cur$pop * coverage)
-pe_df_cur$cases_averted_per_product_unit[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (total_dose_price_per_child_u5 * pe_df_cur$pop * coverage)
+pe_df_cur$cases_averted_per_product_unit[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (total_dose_price_per_child_u2 * pe_df_cur$pop[pe_df_cur$max_target_age == '2'] * coverage)
+pe_df_cur$cases_averted_per_product_unit[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (total_dose_price_per_child_u5 * pe_df_cur$pop[pe_df_cur$max_target_age == '5'] * coverage)
 
 # cases averted per visit/healthcare interaction
 pe_df_cur$cases_averted_per_visit = NA
-pe_df_cur$cases_averted_per_visit[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (num_months_u2/12 * pe_df_cur$pop * coverage)
-pe_df_cur$cases_averted_per_visit[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (num_months_u5/12 * pe_df_cur$pop * coverage)
+pe_df_cur$cases_averted_per_visit[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (num_months_u2/12 * pe_df_cur$pop[pe_df_cur$max_target_age == '2'] * coverage)
+pe_df_cur$cases_averted_per_visit[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (num_months_u5/12 * pe_df_cur$pop[pe_df_cur$max_target_age == '5'] * coverage)
 
 # cases averted per dollar with current price estimates
 pe_df_cur$cases_averted_per_dollar = NA
-pe_df_cur$cases_averted_per_dollar[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (num_months_u2/12*cost_per_visit * pe_df_cur$pop * coverage + total_dose_price_per_child_u2 * pe_df_cur$pop * coverage)
-pe_df_cur$cases_averted_per_dollar[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (num_months_u5/12*cost_per_visit * pe_df_cur$pop * coverage + total_dose_price_per_child_u5 * pe_df_cur$pop * coverage)
+pe_df_cur$cases_averted_per_dollar[pe_df_cur$max_target_age == '2'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '2'] / (pe_df_cur$pop[pe_df_cur$max_target_age == '2'] * coverage) / (num_months_u2/12*cost_per_visit + total_dose_price_per_child_u2)
+pe_df_cur$cases_averted_per_dollar[pe_df_cur$max_target_age == '5'] = pe_df_cur$total_cases_averted_across_years[pe_df_cur$max_target_age == '5'] / (pe_df_cur$pop[pe_df_cur$max_target_age == '5'] * coverage) / (num_months_u5/12*cost_per_visit + total_dose_price_per_child_u5)
 
 
 # ggplot(pe_df_cur, aes(x=vacc_info, y=cases_averted_per_product_unit, fill=as.factor(max_target_age)))+
@@ -396,6 +461,7 @@ gg5a = ggplot(pe_df_cur, aes(x=vacc_info, y=total_cases_averted_across_years_per
   ) +
   scale_fill_manual(name='vacc_info', breaks=intervention_names, values=intervention_colors) +
   scale_pattern_manual(values = c('2' = "none", '5' = "stripe")) +
+  ylab(paste0('average clinical cases averted over first ', cur_age_numeric, ' years per child')) +
   facet_grid(cols=vars(seasonality), rows=vars(Annual_EIR)) +
   theme_classic()
 
@@ -438,6 +504,7 @@ gg5b = ggplot(pe_df_cur, aes(x=vacc_info, y=cases_averted_per_dollar, pattern=as
   ) +
   scale_fill_manual(name='vacc_info', breaks=intervention_names, values=intervention_colors) +
   scale_pattern_manual(values = c('2' = "none", '5' = "stripe")) +
+  ylab(paste0('average clinical cases averted per dollar')) +
   facet_grid(cols=vars(seasonality), rows=vars(Annual_EIR)) +
   theme_classic()
 
@@ -449,13 +516,15 @@ f_save_plot(gg5b, paste0('cases_averted_by_mAbs_per_dollar.png'),
 ######################################## 
 # GR plots
 ######################################## 
-gg3_GR_width = 7 *2/5
+gg3_GR_width = 2.8
 gg3_GR_height = 5
 # additional subsetting of simulations to certain seasonalities and EIRs
 pe_df_cur = filter(pe_df_cur,
                    seasonality %in% c('moderate_unimodal'),
-                   Annual_EIR %in% c(30, 60, 120),
+                   Annual_EIR %in% c(10, 30, 120),  # c(30, 60, 120)
 )
+# reverse order of EIRs for plotting so largest is in top row (for GR builds)
+pe_df_cur$Annual_EIR = factor(pe_df_cur$Annual_EIR, levels=sort(unique(as.numeric(as.character(pe_df_cur$Annual_EIR))), decreasing=TRUE))
 
 gg5a_GR = ggplot(pe_df_cur, aes(x=vacc_info, y=total_cases_averted_across_years_per_child, pattern=as.factor(max_target_age), fill=as.factor(vacc_info)))+
   geom_col_pattern(position = position_dodge(preserve = "single"),
@@ -468,6 +537,7 @@ gg5a_GR = ggplot(pe_df_cur, aes(x=vacc_info, y=total_cases_averted_across_years_
   scale_fill_manual(name='vacc_info', breaks=intervention_names, values=intervention_colors) +
   scale_pattern_manual(values = c('2' = "none", '5' = "stripe")) +
   facet_grid(rows=vars(Annual_EIR)) +
+  ylab(paste0('average clinical cases averted over first ', cur_age_numeric, ' years per child')) +
   theme_classic() +
   theme(legend.position = 'none')
 # # set legend spacing separately from main plot for consistency across builds
@@ -488,6 +558,7 @@ gg5b_GR = ggplot(pe_df_cur, aes(x=vacc_info, y=cases_averted_per_dollar, pattern
   ) +
   scale_fill_manual(name='vacc_info', breaks=intervention_names, values=intervention_colors) +
   scale_pattern_manual(values = c('2' = "none", '5' = "stripe")) +
+  ylab(paste0('average clinical cases averted per dollar')) +
   facet_grid(rows=vars(Annual_EIR)) +
   theme_classic() +
   theme(legend.position = 'none')
@@ -619,8 +690,8 @@ f_save_plot(gg7, paste0('cumulative_cases_across_EIRs_with_mAbs.png'),
 ######################################## 
 # GR plots
 ######################################## 
-gg6_GR_width = 3
-gg6_GR_height = 4
+gg6_GR_width = 3.75
+gg6_GR_height = 4.5
 ##########################################
 sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
                                     max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
@@ -631,7 +702,6 @@ pe_df = sim_output[[3]]
 pe_df$vacc_char[pe_df$vacc_char == 'mab_ime100_bme100_ih5_in200_ic1000_iff72_ik1650_ik29500'] = 'mab_ime99_bme99_ih5_in200_ic1000_iff72_ik1650_ik29500'
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
 pe_df = pe_df[!is.na(pe_df$vacc_info),]
-pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EIR)))
 
 # subset simulations
 cur_cm = 0.6
@@ -642,7 +712,7 @@ cur_age_group = paste0('U', cur_age_numeric)
 # cur_vacc_info = c('none', 'mAb: 95% max, hh=60, initC=1000', 'mAb: 99% max, hh=5, initC=1000')  # 'mAb: 95% max, hh=10, initC=1000', 'mAb: 100% max, hh=2, initC=1000', 
 cur_vacc_info = c('none', 'mAb: 95% max, hh=10, initC=1000', 'mAb: 95% max, hh=20, initC=1000', 'mAb: 95% max, hh=40, initC=1000', 'mAb: 95% max, hh=60, initC=1000', 'mAb: 99% max, hh=5, initC=1000')  # 'mAb: 100% max, hh=2, initC=1000', 
 pe_df_cur = filter(pe_df,
-                   seasonality %in% c('high_unimodal'),
+                   seasonality %in% c('moderate_unimodal'),
                    Annual_EIR %in% cur_eirs,
                    cm_coverage == cur_cm,
                    smc_coverage == 0,
@@ -749,7 +819,7 @@ intervention_colors[intervention_names=='mAb: 99% max, hh=5, initC=1000'] = "#b6
 min_y = 0
 max_y = max(pe_df_cur$total_cases_averted_per_child, na.rm=TRUE)
 gg6_GR4 = ggplot(pe_df_cur, aes(x=Annual_EIR, y=total_cases_averted_per_child))+
-  # geom_point(aes(col=as.factor(vacc_info), group=vacc_info), size=1.5)+
+  geom_point(aes(col=as.factor(vacc_info), group=vacc_info), size=1.5)+
   # geom_line(aes(col=as.factor(vacc_info), group=vacc_info), size=1)+
   geom_xspline(aes(col=as.factor(vacc_info), group=vacc_info), spline_shape=0.4, size=2)+
   scale_colour_manual(name='vacc_info', breaks=intervention_names, values=intervention_colors) +

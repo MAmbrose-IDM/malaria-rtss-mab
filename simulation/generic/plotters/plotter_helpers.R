@@ -243,7 +243,7 @@ f_add_scenario_name <- function(df, scenario_type) {
     df$smc_rtss_mab[df$vacc_coverage <0.01] = ''
     df$smc_rtss_mab[df$smc_coverage >0] = paste0('SMC. ', df$smc_rtss_mab[df$smc_coverage >0])
     df$smc_rtss_mab[df$smc_rtss_mab==''] = 'none'
-    df$smc_rtss_mab = factor(df$smc_rtss_mab, levels=c('none', 'SMC. ', levels(df$vacc_info), paste0('SMC. ', levels(df$vacc_info))))
+    df$smc_rtss_mab = factor(df$smc_rtss_mab, levels=c('SMC. ', levels(df$vacc_info), paste0('SMC. ', levels(df$vacc_info))))
   } else if (scenario_type == 'smc_rtss_mab_age'){
     df = f_add_scenario_name(df, 'smc_rtss_mab')
     df$smc_rtss_mab_age = as.character(df$smc_rtss_mab)
@@ -427,7 +427,9 @@ load_Age_monthly_Cases <- function(simout_dir, exp_name, exp_sweeps = NULL, add_
 add_PfPR_2_10 = function(prev_df_ave, pfpr_colname, exp_sweeps) {
   # cut out ages under 2 and over 10
   df = prev_df_ave[prev_df_ave$year >= 2 & prev_df_ave$year < 10,]
-
+  # remove the year column from df (since PfPR_2_10 is for the full setting, not a specific year)
+  df = df[,-which(colnames(df)=='year')]
+  
   # aggregate across ages within each scenario
   if (any(!(exp_sweeps %in% colnames(df)))) exp_sweeps <- exp_sweeps[-which(!(exp_sweeps %in% colnames(df)))]
   df_ave = df %>%
@@ -436,7 +438,7 @@ add_PfPR_2_10 = function(prev_df_ave, pfpr_colname, exp_sweeps) {
     dplyr::ungroup()
 
   # merge the 2-10 PfPR values into the main dataframe
-  merged_df = merge(prev_df_ave, df_ave, by = exp_sweeps)
+  merged_df = merge(prev_df_ave, df_ave, by = exp_sweeps, all=TRUE)
   return(merged_df)
 }
 
@@ -459,7 +461,7 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
     rename(clinical_cases_ref = clinical_cases,
            severe_cases_ref = severe_cases)
   # add PfPR_2_10 and get mean across any duplicate simulations
-  ref_exp_sweeps = exp_sweeps
+  ref_exp_sweeps = c(exp_sweeps, 'year')
   if (any(!(ref_exp_sweeps %in% colnames(df_references)))) ref_exp_sweeps <- ref_exp_sweeps[-which(!(ref_exp_sweeps %in% colnames(df_references)))]
   df_references = add_PfPR_2_10(prev_df_ave = df_references, pfpr_colname = 'pfpr', exp_sweeps = ref_exp_sweeps) %>%
     rename(pfpr_2_10_ref = PfPR_2_10) %>%
@@ -482,7 +484,7 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
     rename(clinical_cases_no_vacc = clinical_cases,
            severe_cases_no_vacc = severe_cases)
   # add PfPR_2_10 and get mean across any duplicate simulations
-  ref_exp_sweeps = exp_sweeps
+  ref_exp_sweeps = c(exp_sweeps, 'year')
   if (any(!(ref_exp_sweeps %in% colnames(df_no_vacc_references)))) ref_exp_sweeps <- ref_exp_sweeps[-which(!(ref_exp_sweeps %in% colnames(df_no_vacc_references)))]
   df_no_vacc_references = add_PfPR_2_10(prev_df_ave = df_no_vacc_references, pfpr_colname = 'pfpr', exp_sweeps = ref_exp_sweeps) %>%
     rename(pfpr_2_10_no_vacc = PfPR_2_10) %>%
@@ -536,7 +538,7 @@ get_PE_and_averted_estimates <- function(dat, exp_sweeps, max_years = c(1, 2, 5,
   for (i_max in max_years) {
     # get cases per 1000 across all included ages
     tdf = cases_scenarios_references %>%
-      filter(year <= i_max) %>%
+      filter(year < i_max) %>%
       ungroup() %>%
       dplyr::group_by_at(exp_sweeps) %>%
       dplyr::summarise(clinical_cases = mean(clinical_cases),
