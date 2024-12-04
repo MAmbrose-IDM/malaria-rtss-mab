@@ -62,7 +62,7 @@ f_getCustomTheme <- function(fontscl = 1) {
 }
 
 # specify colors for plotted interventions (based on hh for mAbs and specified manually otherwise)
-get_intervention_colors = function(df, level_name = 'smc_rtss_mab', rtss_col=rgb(0.5,0.5,0.5), smc_col='#924900', none_col='black', hh_vals=c(5, 10, 20, 40, 60, 80)){
+get_intervention_colors = function(df, level_name = 'smc_rtss_mab', rtss_col=rgb(0.5,0.5,0.5), smc_col='#924900', none_col='black', hh_vals=c(2, 5, 10, 20, 40, 60, 80)){
   # Note: in ggplot, use:   scale_colour_manual(name='smc_rtss_mab', breaks=intervention_names, values=intervention_colors) +
   if(is.factor(df[[level_name]])){
     intervention_names = levels(df[[level_name]])

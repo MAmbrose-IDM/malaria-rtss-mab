@@ -23,9 +23,10 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-exp_name_comp1 = 'sweep4_seeds1'
-exp_name_comp2 = 'sweep4b_seeds1'
-exp_name_comp3 = 'sweep4c_seeds1'
+exp_name_comp1 = 'mAb_sweep4_seeds1'
+exp_name_comp2 = 'mAb_sweep4b_seeds1'
+exp_name_comp3 = 'mAb_sweep4d_seeds1'
+exp_name_comp4 = 'mAb_sweep4e_seeds1'
 
 # exp_name = 'sweep4_seeds1'
 
@@ -37,8 +38,7 @@ if (!dir.exists(paste0(simout_dir, '/_plots/pdf'))) dir.create(paste0(simout_dir
 # Process simulation output and create line plots comparing cases 
 #   averted with RTS,S versus mAbs across mAb params
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# exp_name = exp_name_comp1
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3), add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1,exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
                                     max_years=c(1, 3, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 
 pe_df = sim_output[[3]]
@@ -50,8 +50,8 @@ pe_df$hh[pe_df$vacc_type %in% c('rtss', 'RTS,S')]=NA
 cur_cm = 0.6
 cur_age = 'U5'
 cur_smcs = c(0)
-cur_eirs = c(30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')#, 'high_unimodal')
+cur_eirs = c(20)
+cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')#, 'constant','high_unimodal')
 pe_df_cur = filter(pe_df,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -62,6 +62,8 @@ pe_df_cur = filter(pe_df,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 
+# remove the highest max efficacy mAbs for plot
+if(length(intersect(which(pe_df_cur$max_efficacy >98), which(pe_df_cur$vacc_type %in% c('mab', 'mAb'))))>0) pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$max_efficacy >98), which(pe_df_cur$vacc_type %in% c('mab', 'mAb'))),]
 
 # create plots with colors matching efficacy-through-time plot
 clist = get_intervention_colors(pe_df_cur, level_name = 'hh')
@@ -90,9 +92,9 @@ gg2 = ggplot(pe_df_cur, aes(x=hh, y=cases_averted_per100000, group=interaction(v
   xlab('speed of protection decline (parameter hh)') +
   facet_wrap(facets='seasonality', nrow=1) + 
   theme_bw()
-f_save_plot(gg1, paste0('compare_rtss_mAb_frac_cases_', cur_age,'_averted_by_hh_eff.png'),
+f_save_plot(gg1, paste0('compare_rtss_mAb_frac_cases_', cur_age,'_averted_by_hh_eff_EIR', cur_eirs[1], '.png'),
             file.path(simout_dir, '_plots'), width = 7.5, height = 4.5, units = 'in', device_format = device_format)
-f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_eff.png'),
+f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_eff_EIR', cur_eirs[1], '.png'),
             file.path(simout_dir, '_plots'), width = 7.5, height = 4.5, units = 'in', device_format = device_format)
 
 
@@ -105,9 +107,8 @@ f_save_plot(gg2, paste0('compare_rtss_mAb_num_cases_', cur_age,'_averted_by_hh_e
 # Process simulation output and create heat maps comparing 
 #   performance of mAbs relative to RTSS
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# simout_dir=file.path(projectpath, 'simulation_output')
-# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name, add_PE_perAge=TRUE,
-#                                     max_years=c(5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1,exp_name_comp2, exp_name_comp3), add_PE_perAge=TRUE,
+                                    max_years=c(1, 3, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 pe_df = sim_output[[3]]
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'vacc_info')
 pe_df = pe_df[!is.na(pe_df$vacc_info),]
@@ -121,7 +122,7 @@ match_cols = c('Annual_EIR', 'seasonality', 'age_group', 'cm_coverage', 'smc_cov
               'cm_target_group', 'smc_target_group', 'vacc_target_group')
 keep_cols = c('cases_averted_per100000', 'severe_cases_averted_per100000')
 df_rtss = pe_df_rtss %>%
-  dplyr::select(c(match_cols, keep_cols)) %>%
+  dplyr::select(c(all_of(match_cols), all_of(keep_cols))) %>%
   rename(cases_averted_per100000_rtss = cases_averted_per100000,
          severe_cases_averted_per100000_rtss = severe_cases_averted_per100000)
 # subset to mAbs
@@ -140,7 +141,7 @@ cur_cm = 0.6
 cur_age = 'U5'
 cur_smcs = c(0)
 cur_eirs = c(5, 10, 30)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'higher_unimodal')
+cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df_compare,
                    age_group == cur_age,
                    seasonality %in% cur_seasonalities,
@@ -184,8 +185,8 @@ keep_cols = c('Annual_EIR', 'seasonality', 'vacc_char', 'vacc_coverage', 'vacc_t
 compare_mab_rtss = pe_df_cur %>% dplyr::select(keep_cols)
 
 extreme_cases = min(abs(min(compare_mab_rtss$cases_averted_compared_to_rtss)), max(compare_mab_rtss$cases_averted_compared_to_rtss))
-extreme_cases = 300#floor(extreme_cases/10000)*10000
-breaks_cases = c(-Inf, seq(-1*extreme_cases, extreme_cases, length.out=6), Inf)
+extreme_cases = 600#floor(extreme_cases/10000)*10000
+breaks_cases = c(-Inf, seq(-1*extreme_cases, extreme_cases, length.out=8), Inf)
 colors_cases = brewer.pal(n=length(breaks_cases), name='BrBG')
 colors_cases[length(breaks_cases)/2] = '#EFF2DA'
 gg3 = ggplot(compare_mab_rtss, aes(x=hh, y=max_efficacy, z=cases_averted_compared_to_rtss)) +
@@ -203,11 +204,31 @@ f_save_plot(gg3, paste0('contour_cases_averted_mab_compared_rtss_for_eir_seasona
             file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
 
 
+# build plot for GR with example point for mAb product
+example_product = data.frame(hh=10, max_efficacy=90, seasonality=factor(cur_seasonalities, levels=cur_seasonalities))
+example_product = merge(example_product, data.frame(Annual_EIR=factor(cur_eirs, levels=sort(cur_eirs))), all=TRUE)
+gg3b = ggplot() +
+  geom_contour_filled(data=compare_mab_rtss, aes(x=hh, y=max_efficacy, z=cases_averted_compared_to_rtss), na.rm=TRUE, breaks=breaks_cases) +
+  scale_fill_manual(
+    values=colors_cases, 
+    # breaks = cases_breaks,
+    name='additional cases averted'
+  ) +
+  geom_point(data=example_product, aes(x=hh, y=max_efficacy), shape=20, size=3, color='red') +
+  theme_classic() +
+  facet_grid(Annual_EIR~seasonality)
+f_save_plot(gg3b, paste0('contour_cases_averted_mab_compared_rtss_for_eir_seasonality',
+                         cur_age, '_',
+                         cur_cm * 100, 'CM_GRexample'),
+            file.path(simout_dir, '_plots'), width = 8, height = 5, units = 'in', device_format = device_format)
+
+
+
 extreme_severe = min(abs(min(compare_mab_rtss$severe_cases_averted_compared_to_rtss)), max(compare_mab_rtss$severe_cases_averted_compared_to_rtss))
-extreme_severe = floor(extreme_severe/10)*10
+extreme_severe = floor(extreme_severe/1)*1
 breaks_severe = c(-Inf, seq(-1*extreme_severe, extreme_severe, length.out=6), Inf)
 colors_severe = brewer.pal(n=length(breaks_severe), name='BrBG')
-colors_severe[length(breaks_cases)/2] = '#EFF2DA'
+colors_severe[length(breaks_severe)/2] = '#EFF2DA'
 gg4 = ggplot(compare_mab_rtss, aes(x=hh, y=max_efficacy, z=severe_cases_averted_compared_to_rtss)) +
   geom_contour_filled(na.rm=TRUE, breaks=breaks_severe) +
   scale_fill_manual(

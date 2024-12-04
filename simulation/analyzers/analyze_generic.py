@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     working_dir = os.path.join(projectpath, 'simulation_output')
     start_year = 2020  # assume simulation begins on Jan 1 of this year
-    end_year = 2027  #! # general: 2027 (old: 2029), seed6: 2029,  Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
+    end_year = 2027  #! # general: 2027 (old: 2029),  Kintampo and Chandramohan: 2025, SweepEIR: 2039  # simulation ends on Dec 31 of this year
 
     expt_ids = {
         # 'validation_phase3_wBooster': 'ba5426a3-df0e-ed11-a9fb-b88303911bc1',
@@ -114,7 +114,12 @@ if __name__ == "__main__":
         # 'sweep4b_seeds1': '96091669-712c-ed11-a9fc-b88303911bc1',
         # 'sweep7b_seeds1': 'f8044d7a-6f2c-ed11-a9fc-b88303911bc1',
         # 'sweep4c_seeds1': 'e4f2ec6a-8c2c-ed11-a9fc-b88303911bc1',
-        'sweep7c_seeds1': 'b1eb7e88-9e2c-ed11-a9fc-b88303911bc1'
+        # 'sweep7c_seeds1': 'b1eb7e88-9e2c-ed11-a9fc-b88303911bc1'
+        # 'mAb_sweep4_seeds1': '319fb9da-d42f-ed11-a9fc-b88303911bc1',
+        # 'mAb_sweep6_seeds1': '39390380-d72f-ed11-a9fc-b88303911bc1',
+        # 'mAb_sweep4b_seeds1': 'a50410f0-9930-ed11-a9fc-b88303911bc1',
+        # 'mAb_sweep4d_seeds1': 'd5d4b6d1-1532-ed11-a9fc-b88303911bc1',
+        'mAb_sweep4e_seeds1': '593d0567-af32-ed11-a9fc-b88303911bc1',
     }
 
     sweep_variables = ['Scenario_id', 'Run_Number', 'Annual EIR', 'seasonality', 'Cohort_birth_month',

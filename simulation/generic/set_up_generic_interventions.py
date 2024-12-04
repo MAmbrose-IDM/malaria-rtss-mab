@@ -24,7 +24,6 @@ def calc_high_low_access_coverages(coverage_all, high_access_frac):
     return [coverage_high, coverage_low]
 
 
-
 def get_concentration_at_time(tt, initial_concentration, fast_frac, k1, k2):
     concentration_at_tt = initial_concentration * (fast_frac * math.exp(-1 * tt / k1) + (1 - fast_frac) * math.exp(-1 * tt / k2))
     return concentration_at_tt

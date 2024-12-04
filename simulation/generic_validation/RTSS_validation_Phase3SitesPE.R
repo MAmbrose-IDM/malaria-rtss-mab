@@ -38,6 +38,7 @@ if(booster_string == 'boost'){
 # reference_filepath = file.path(datapath, 'rtss_phase3/kintampo_trial_summary_3month.csv')
 reference_filepath = file.path(datapath, 'rtss_phase3/RTSS_32month_allCases.csv')
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Process simulation output
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -221,4 +222,126 @@ gg2 = ggplot(data = comparison_df3) +
   facet_wrap(facets='site',nrow=3)
 f_save_plot(gg2, paste0('PE2_comparison_SelectParams_sizeLimit', size_limit),
             file.path(exp_filepath), width = 12, height = 8, units = 'in', device_format = device_format)
+
+
+
+
+
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Compare PE across reference sites - is it different for sites with different EIRs?
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# add rough EIR associated with each site
+site_eirs = data.frame(site=c("Agogo", "Bagamoyo", "Kilifi", "Kintampo",
+                              "Kombewa","Korogwe","Lambarene", "Lilongwe" ,
+                              "Manhica","Nanoro" ,"Siaya"), 
+                       eir=c(4.9, 1.4, 0.4, 11.1,
+                             9.7, 0.6, 1, 2.1,
+                             1.1, 33.3, 27.8))
+ref_df_eir = merge(ref_df_subset, site_eirs, by='site', all=TRUE)
+# add EIR categories: under 5, 5-15, >15 
+ref_df_eir$eir_category = '<5'
+ref_df_eir$eir_category[ref_df_eir$eir>5] = '5-15'
+ref_df_eir$eir_category[ref_df_eir$eir>15] = '>15'
+ref_df_eir$eir_category = factor(ref_df_eir$eir_category, levels=c('<5', '5-15', '>15'))
+# plot, with point shape determined by EIR
+ggplot(ref_df_eir, aes(x=time.group, y=PE2, group=site, color=eir_category)) + 
+  geom_point() +
+  geom_smooth(data=ref_df_eir, aes(x=time.group, y=PE2, group=eir_category), method='loess') +
+  theme_classic()
+
+
+
+# aggregated from week 0-32 ; look at faceted by age group and boost/no boost
+ref_df_agg = ref_df[intersect(which(ref_df$range == '[M0-32]'), which(ref_df$measure =='clinical')),]
+ref_df_agg = ref_df_agg[ref_df_agg$site != 'OVERALL',]
+ref_df_agg = ref_df_agg[ref_df_agg$case.defn == 'primary',]
+ref_df_agg$PE = as.numeric(ref_df_agg$PE)
+# merge with EIR groupings
+ref_df_agg = merge(ref_df_agg, site_eirs, by='site', all=TRUE)
+# add EIR categories: under 5, 5-15, >15 
+ref_df_agg$eir_category = '<5'
+ref_df_agg$eir_category[ref_df_agg$eir>5] = '5-15'
+ref_df_agg$eir_category[ref_df_agg$eir>15] = '>15'
+ref_df_agg$eir_category = factor(ref_df_agg$eir_category, levels=c('<5', '5-15', '>15'))
+
+ggplot(ref_df_agg, aes(x=eir_category, y=PE))+#, color=age.group, shape=comparison))+
+  geom_violin() +
+  geom_point() +
+  theme_classic() +
+  facet_grid(rows=vars(comparison), cols=vars(age.group))
+
+ggplot(ref_df_agg, aes(x=eir_category, y=PE))+#, color=age.group, shape=comparison))+
+  geom_violin() +
+  geom_point() +
+  theme_classic() +
+  facet_grid(rows=vars(comparison))
+
+ggplot(ref_df_agg, aes(x=eir_category, y=PE))+#, color=age.group, shape=comparison))+
+  geom_violin() +
+  geom_point() +
+  theme_classic() 
+
+
+
+
+
+
+
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Compare the residual between reference and simulation points across reference sites - is it different for sites with different EIRs?
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# plot the selected values from Phase 3 and Chandramohan
+if(booster_string == 'boost'){
+  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200_bb80'),]
+} else{
+  comparison_df3 = comparison_df[as.character(comparison_df$vacc_char) %in% c('hh40_nn200'),]
+}
+
+comparison_df3$eir_category = '<5'
+comparison_df3$eir_category[comparison_df3$Annual.EIR>5] = '5-15'
+comparison_df3$eir_category[comparison_df3$Annual.EIR>15] = '>15'
+comparison_df3$eir_category = factor(comparison_df3$eir_category, levels=c('<5', '5-15', '>15'))
+
+# plot faceted by EIR category, with site as color
+ggplot(data = comparison_df3) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(site)), lwd = 1) +
+  geom_point(aes(x = time_since_3rd_dose, y = PE2, col=factor(site))) +
+  geom_errorbar(aes(x = time_since_3rd_dose, ymin=PE2l, ymax=PE2u)) +
+  theme_light() +
+  ylab('efficacy against clinical malaria') +
+  xlab('time since third dose (years)') +
+  ylim(-0.5, 1) + 
+  facet_wrap(facets='eir_category',nrow=3)
+
+
+# plot all on same space, with EIR category as color
+ggplot(data = comparison_df3) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(eir_category), group_by=site), lwd = 1) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE2, col=factor(eir_category), group_by=site), lwd = 2, alpha=0.2) +
+  geom_point(aes(x = time_since_3rd_dose, y = PE2, col=factor(eir_category), group_by=site), size=2) +
+  geom_errorbar(aes(x = time_since_3rd_dose, ymin=PE2l, ymax=PE2u)) +
+  theme_light() +
+  ylab('efficacy against clinical malaria') +
+  xlab('time since third dose (years)') +
+  ylim(-0.5, 1) 
+
+ggplot(data = comparison_df3) +
+  geom_line(aes(x = time_since_3rd_dose, y = PE_sim, col=factor(eir_category), group_by=site), lwd = 1) +
+  # geom_line(aes(x = time_since_3rd_dose, y = PE2, col=factor(eir_category), group_by=site), lwd = 2, alpha=0.2) +
+  geom_point(aes(x = time_since_3rd_dose, y = PE2, col=factor(eir_category), group_by=site), size=4) +
+  # geom_errorbar(aes(x = time_since_3rd_dose, ymin=PE2l, ymax=PE2u)) +
+  theme_light() +
+  ylab('efficacy against clinical malaria') +
+  xlab('time since third dose (years)') +
+  ylim(-0.5, 1) 
+
+# get difference between reference point and matched simulation value
+comparison_df3$diff = comparison_df3$PE2 - comparison_df3$PE_sim
 

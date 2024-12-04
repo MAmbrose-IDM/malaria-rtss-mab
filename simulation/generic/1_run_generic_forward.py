@@ -21,7 +21,7 @@ else:
 
 datapath, projectpath = load_box_paths(parser_default=SetupParser.default_block)
 
-# REFERENCE CSV FOR TRANSMISSION SETTINGS
+# COORDINATOR CSV FOR SETTING UP SIMULATION SCENARIOS
 """ reference csv's examples
 TESTING
 test_mAb.csv
@@ -33,12 +33,12 @@ NO-INTERVENTIONS
 ___.csv
 """
 num_seeds = 1
-scen_csv = 'sweep7c.csv'
-expname = scen_csv.replace('.csv', '_seeds%i' % num_seeds)
+scen_csv = 'test.csv'
+expname = 'mAb_%s' % scen_csv.replace('.csv', '_seeds%i' % num_seeds)
 ds_name = 'run_col'
 
-years = 8  # for general runs: 8, seed 6: 10, for Phase3 and ChandramohanTrial: 6
-use_12_cohorts_flag = True  # for general runs: True, for validation experiments: False
+years = 3  #!8  # for general runs: 8, for Phase3 and ChandramohanTrial: 6
+use_12_cohorts_flag = False #!! True  # for general runs: True, for validation experiments: False
                             # If True, simulates one cohort born in each month (seasonality and SMC dates updated accordingly)
 
 if __name__ == "__main__":

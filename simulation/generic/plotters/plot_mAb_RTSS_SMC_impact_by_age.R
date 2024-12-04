@@ -26,10 +26,10 @@ paths = get_project_paths()
 datapath = paths[1]
 projectpath = paths[2]
 
-exp_name_comp1 = 'sweep6_seeds1'
-exp_name_comp2 = 'sweep7_seeds1'
-exp_name_comp3 = 'sweep7b_seeds1'
-exp_name_comp4 = 'sweep7c_seeds1'
+exp_name_comp1 = 'mAb_sweep6_seeds1'
+# exp_name_comp2 = 'sweep7_seeds1'
+# exp_name_comp3 = 'sweep7b_seeds1'
+# exp_name_comp4 = 'sweep7c_seeds1'
 
 simout_dir=file.path(projectpath, 'simulation_output')
 if (!dir.exists(paste0(simout_dir, '/_plots'))) dir.create(paste0(simout_dir, '/_plots'))
@@ -50,10 +50,10 @@ age_labels = paste0(age_label_values, '-', (age_label_values + 1))
 ########################################################################################
 # Process simulation output for cases and cases averted by age
 ########################################################################################
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
-                                    max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
-# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name_comp1, add_PE_perAge=TRUE,
-#                                     max_years=c(2, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+# sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
+#                                     max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=exp_name_comp1, add_PE_perAge=TRUE,
+                                    max_years=c(2, 5, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 pe_df = sim_output[[4]]
 pe_df = f_add_scenario_name(df = pe_df, scenario_type = 'smc_rtss_mab_age')
 pe_df = pe_df[!is.na(pe_df$vacc_info),]
@@ -63,7 +63,7 @@ pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EI
 # subset simulations
 cur_cm = 0.6
 cur_eirs = unique(pe_df$Annual_EIR)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('moderate_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df,
                    seasonality %in% cur_seasonalities,
                    Annual_EIR %in% cur_eirs,
@@ -71,8 +71,8 @@ pe_df_cur = filter(pe_df,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 
 # only look at U2 and U5 targets and plot to age 6 (concerns about incidence-by-age and recalibration needs)
 pe_df_cur = pe_df_cur[which(pe_df_cur$max_target_age %in% c(2, 5)),]
@@ -146,8 +146,8 @@ pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$vacc_type %in% c('rtss', 'RTS,S
 # add factors for seasonality
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 
 # only look at U2 and U5 targets and plot to age 6 (concerns about incidence-by-age and recalibration needs)
 pe_df_cur = pe_df_cur[which(pe_df_cur$max_target_age %in% c(2, 5)),]
@@ -212,8 +212,8 @@ pe_df_cur = filter(pe_df,
 # remove RTS,S
 pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$vacc_type %in% c('rtss', 'RTS,S')), which(pe_df_cur$vacc_coverage >0)),]
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 
 # only look at U2 and U5 targets and plot to age 6 (concerns about incidence-by-age and recalibration needs)
 pe_df_cur = pe_df_cur[which(pe_df_cur$max_target_age %in% c(2, 5)),]
@@ -395,7 +395,7 @@ cur_cm = 0.6
 cur_eirs = unique(pe_df$Annual_EIR)
 cur_age_numeric = 8
 cur_age = paste0('U', (cur_age_numeric))
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('moderate_unimodal', 'higher_unimodal')
 pe_df_cur = filter(pe_df,
                    seasonality %in% cur_seasonalities,
                    Annual_EIR %in% cur_eirs,
@@ -407,15 +407,15 @@ pe_df_cur = filter(pe_df,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 
 # subset to U2 results for those receiving vaccine to age U2 and U5 results for those receving the vaccine to U5
 # pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$age_group == 'U5'), which(pe_df_cur$max_target_age == '2')),]
 # pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$age_group == 'U2'), which(pe_df_cur$max_target_age == '5')),]
 
 # remove the U8 targeting - not plotted here
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_target_age == '8'),]
+if(any(pe_df_cur$max_target_age == '8')) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_target_age == '8'),]
 
 # get total number of cases averted (from average averted in each year)
 pe_df_cur$total_cases_averted_across_years = cur_age_numeric * pe_df_cur$cases_averted_per100000
@@ -590,9 +590,9 @@ pe_df$Annual_EIR = factor(pe_df$Annual_EIR, levels = sort(unique(pe_df$Annual_EI
 # subset simulations
 cur_cm = 0.6
 cur_eirs = unique(pe_df$Annual_EIR)
-cur_seasonalities = c('constant', 'moderate_unimodal', 'high_unimodal')
+cur_seasonalities = c('moderate_unimodal', 'higher_unimodal')
 cur_max_target_age = 5
-cur_age_numeric = 7  # plots will show total cases averted up to this age
+cur_age_numeric = 8  # plots will show total cases averted up to this age
 cur_age_group = paste0('U', cur_age_numeric)
 pe_df_cur = filter(pe_df,
                    seasonality %in% cur_seasonalities,
@@ -606,8 +606,8 @@ pe_df_cur = filter(pe_df,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 
 pe_df_cur$total_cases_averted_per_child = pe_df_cur$cases_averted_per100000 * cur_age_numeric / 100000
 
@@ -660,8 +660,8 @@ pe_df_cur = filter(pe_df,
 )
 pe_df_cur$seasonality = factor(pe_df_cur$seasonality, levels=cur_seasonalities)
 # remove some of the new vaccines
-pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
-pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
+if(any(pe_df_cur$hh<5)) pe_df_cur = pe_df_cur[-which(pe_df_cur$hh<5),]
+if(any(pe_df_cur$max_efficacy>99)) pe_df_cur = pe_df_cur[-which(pe_df_cur$max_efficacy>99),]
 # remove RTS,S
 pe_df_cur = pe_df_cur[-intersect(which(pe_df_cur$vacc_type %in% c('rtss', 'RTS,S')), which(pe_df_cur$vacc_coverage >0)),]
 
@@ -693,7 +693,7 @@ f_save_plot(gg7, paste0('cumulative_cases_across_EIRs_with_mAbs.png'),
 gg6_GR_width = 3.75
 gg6_GR_height = 4.5
 ##########################################
-sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1, exp_name_comp2, exp_name_comp3, exp_name_comp4), add_PE_perAge=TRUE,
+sim_output = load_Age_monthly_Cases(simout_dir=simout_dir, exp_name=c(exp_name_comp1), add_PE_perAge=TRUE,
                                     max_years=c(5, 6, 7, 8), keep_birth_month=FALSE, fname='All_Age_monthly_Cases.csv')
 
 #### cumulative cases
